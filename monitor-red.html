@@ -232,6 +232,23 @@
     #onekChatToggle{font-size:.75rem;padding:2px 7px;border-radius:6px;
       background:#1e293b;border:1px solid #334155;color:#64748b;cursor:pointer}
     #onekChatToggle:hover{border-color:#3b82f6;color:#93c5fd}
+    /* ── Wake Word Button ── */
+    #onekWakeBtn{font-size:.7rem;padding:2px 7px;border-radius:6px;
+      background:#1e293b;border:1px solid #334155;color:#64748b;cursor:pointer;
+      transition:all .2s;white-space:nowrap;}
+    #onekWakeBtn:hover{border-color:#a855f7;color:#c4b5fd}
+    #onekWakeBtn.wake-on{background:#2d1b4e;border-color:#a855f7;color:#c4b5fd;}
+    /* Indicador de escucha activa — dot pulsante */
+    #wakeIndicator{display:none;align-items:center;gap:5px;
+      font-size:.6rem;color:#a855f7;padding:2px 8px;justify-content:center;}
+    #wakeIndicator.active{display:flex}
+    .wake-dot{width:7px;height:7px;border-radius:50%;background:#a855f7;
+      animation:wakePulse 1.4s ease-in-out infinite;}
+    @keyframes wakePulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.5);opacity:1}}
+    /* Flash al detectar la palabra */
+    @keyframes wakeFlash{0%{box-shadow:0 0 0 0 rgba(168,85,247,.8)}
+      70%{box-shadow:0 0 0 18px rgba(168,85,247,0)}100%{box-shadow:0 0 0 0 rgba(168,85,247,0)}}
+    #onekCard.wake-detected{animation:wakeFlash .6s ease-out;}
 
 
     #onekWrap{position:fixed;bottom:18px;right:18px;z-index:800;
@@ -777,26 +794,31 @@
   <div id="onekBubble"></div>
   <div id="onekCard" onclick="onekClick()">
     <div id="onekBar">
-      <span id="onekName">⚡ ONEK</span>
+      <span id="onekName">⚡ NEXO</span>
       <span id="onekStatus">en espera</span>
+      <button id="onekWakeBtn" onclick="event.stopPropagation();toggleWakeWord()" title="Activar escucha continua — di 'NEXO' para llamarme">👂</button>
       <button id="onekChatToggle" onclick="event.stopPropagation();toggleOnekChat()" title="Chat">💬</button>
       <button id="onekMin" onclick="event.stopPropagation();toggleOnek()" title="Minimizar">−</button>
     </div>
     <canvas id="onekCanvas" width="160" height="190"></canvas>
+    <div id="wakeIndicator">
+      <div class="wake-dot"></div>
+      <span id="wakeStatus">Escuchando "NEXO"…</span>
+    </div>
     <div id="onekFoot"><div id="onekMood">Esperando inicio…</div></div>
     <!-- Panel de chat -->
     <div id="onekChat">
       <div id="onekMessages"></div>
       <div id="onekInputArea">
-        <button class="onek-ibtn" id="onekVoiceBtn" onclick="toggleListening()" title="Hablar con ONEK">🎤</button>
-        <input id="onekInput" placeholder="Pregúntame algo…" onkeydown="if(event.key==='Enter')onekSend()"/>
+        <button class="onek-ibtn" id="onekVoiceBtn" onclick="toggleListening()" title="Hablar con NEXO">🎤</button>
+        <input id="onekInput" placeholder="Pregúntame algo a NEXO…" onkeydown="if(event.key==='Enter')onekSend()"/>
         <button class="onek-ibtn" onclick="onekSend()" title="Enviar">▶</button>
-        <button class="onek-ibtn" id="onekTtsBtn" onclick="toggleTts()" title="Voz de ONEK">🔊</button>
+        <button class="onek-ibtn" id="onekTtsBtn" onclick="toggleTts()" title="Voz de NEXO">🔊</button>
       </div>
     </div>
   </div>
   <!-- Estado minimizado -->
-  <div class="onek-mini" id="onekMini" style="display:none" onclick="toggleOnek()" title="Abrir ONEK">🤖</div>
+  <div class="onek-mini" id="onekMini" style="display:none" onclick="toggleOnek()" title="Abrir NEXO">🤖</div>
 </div>
 
 <!-- ═══════════ MODAL AYUDA ═══════════ -->
@@ -3669,11 +3691,11 @@ function norm(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036
 
 var INTENTS=[
   /* Saludos */
-  { keys:['hola','hello','buenas','hey','saludos','buen dia','ey onek'],
-    fn: function(){ return ['¡Hola! Soy ONEK 👋, tu asistente de red local.\nPuedo responder sobre tu conexión, historial y SLA. ¿Qué necesitas?','¡Buenas! Cuéntame, ¿qué quieres saber sobre tu red?','¡Hey! Estoy aquí para ayudarte. Pregúntame lo que quieras sobre tu conexión.'][Math.floor(Math.random()*3)]; }},
+  { keys:['hola','hello','buenas','hey','saludos','buen dia','ey nexo'],
+    fn: function(){ return ['¡Hola! Soy NEXO 👋, tu asistente de red local.\nPuedo responder sobre tu conexión, historial y SLA. ¿Qué necesitas?','¡Buenas! Cuéntame, ¿qué quieres saber sobre tu red?','¡Hey! Estoy aquí para ayudarte. Pregúntame lo que quieras sobre tu conexión.'][Math.floor(Math.random()*3)]; }},
   /* Identidad */
   { keys:['quien eres','como te llamas','que eres','tu nombre','presentate'],
-    fn: function(){ return 'Soy ONEK ⚡ — Network Explorer & Key-analyzer.\nSoy tu asistente 3D de monitoreo de red. Analizo tu conexión en tiempo real, leo el historial de IndexedDB y te ayudo a entender si tu ISP cumple lo que prometió.'; }},
+    fn: function(){ return 'Soy NEXO ⚡ — Network Explorer & eXpert Observer.\nSoy tu asistente 3D de monitoreo de red. Analizo tu conexión en tiempo real, leo el historial de IndexedDB y te ayudo a entender si tu ISP cumple lo que prometió.'; }},
   /* Ayuda / comandos */
   { keys:['ayuda','que puedes','que sabes','comandos','que haces','como te uso','instrucciones'],
     fn: function(){ return '💡 Puedes preguntarme:\n• ¿Cómo está la conexión?\n• ¿Cuál es el ping actual?\n• ¿Cuál fue la peor hora hoy?\n• ¿Mi ISP cumple el contrato?\n• ¿Cuál es el promedio de hoy?\n• ¿Cuándo fue el último pico?\n• ¿Cuál es mi IP / ISP?\n• Genera un informe\n• Abre el historial\n• ¿Qué me recomiendas?\n• Empieza a medir / para de medir'; }},
@@ -3836,6 +3858,21 @@ var INTENTS=[
   /* Despedida */
   { keys:['adios','bye','hasta luego','chau','nos vemos'],
     fn: function(){ setOnekMood('wave'); return '¡Hasta luego! 👋\nSigo monitoreando tu red. Cualquier cosa, aquí estaré.'; }},
+  /* Wake Word */
+  { keys:['activa escucha','escucha continua','modo alexa','modo siri','activa wake word','siempre escuchando','detecta nexo'],
+    fn: function(){
+      if(!_wake.enabled){
+        setTimeout(toggleWakeWord, 300);
+        return '¡Activando escucha continua! 👂\nDi "NEXO" en cualquier momento y responderé al instante. Toca el botón 👂 en mi barra para desactivarla.';
+      } else {
+        return 'La escucha continua ya está activa 👂\nEstoy esperando que digas "NEXO". Toca el botón 👂 para desactivarla.';
+      }
+    }},
+  { keys:['desactiva escucha','desactiva wake','para de escuchar','stop escucha'],
+    fn: function(){
+      if(_wake.enabled){ setTimeout(wakeStop, 300); return 'Escucha continua desactivada 🔕\nYa no estaré esperando la palabra NEXO.'; }
+      return 'La escucha continua ya estaba desactivada.';
+    }},
 ];
 
 function onekProcess(text){
@@ -3964,58 +4001,277 @@ function intentRecommend(){
 /* ── Saludo inicial al abrir chat ── */
 function onekGreet(){
   var n=today.length;
-  var msg=n>0?'¡Hola! Ya tengo '+n+' mediciones de hoy.\nPregúntame sobre tu conexión, ping, historial o SLA 📊':'¡Hola! Soy ONEK 👋\nEl monitor no está activo todavía.\nPregúntame algo o escribe "ayuda" para ver qué puedo hacer.';
+  var msg=n>0?'¡Hola! Ya tengo '+n+' mediciones de hoy.\nPregúntame sobre tu conexión, ping, historial o SLA 📊':'¡Hola! Soy NEXO 👋\nEl monitor no está activo todavía.\nPregúntame algo o escribe "ayuda" para ver qué puedo hacer.';
   setTimeout(function(){ addOnekMsg(msg,'bot'); },200);
 }
 
 /* ══════════════════════════════════════════════════════════════
-   WEB SPEECH API — Reconocimiento y síntesis de voz
+   SISTEMA DE VOZ UNIFICADO — Una sola SpeechRecognition para
+   wake word "NEXO" Y comandos. Elimina el conflicto de permisos.
+   ══════════════════════════════════════════════════════════════ */
+var _wake = {
+  enabled   : false,
+  restarting: false,
+  restartTimer: null,
+  lastDetect: 0,
+  permGranted: false
+};
+
+/* Instancia unificada de reconocimiento de voz */
+var _sr = {
+  rec    : null,    /* única SpeechRecognition de la app */
+  mode   : 'idle', /* 'idle' | 'wake' | 'command' */
+  cmdTimer: null   /* timeout auto-retorno a wake */
+};
+
+/* Variaciones fonéticas que el reconocedor puede transcribir como "NEXO" */
+var WAKE_KEYWORDS = [
+  'nexo','nex o','nex','nejo','nexus','ne xo','nexo.','¡nexo','nexo!','néxo'
+];
+
+function wakeNorm(s){
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9 ]/g,'').trim();
+}
+
+function wakeMatches(transcript){
+  var t = wakeNorm(transcript);
+  return WAKE_KEYWORDS.some(function(kw){ return t.indexOf(wakeNorm(kw)) !== -1; });
+}
+
+/* ── Crear la instancia unificada ── */
+function srInit(){
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR) return null;
+  var r = new SR();
+  r.lang = 'es-ES';
+  r.continuous = true;
+  r.interimResults = true;
+  r.maxAlternatives = 3;
+
+  r.onstart = function(){
+    /* El mic está activo — marcar como listo para evitar getUserMedia posterior */
+    _wake.permGranted = true;
+    _chat.micReady = true;
+  };
+
+  r.onresult = function(e){
+    for(var i = e.resultIndex; i < e.results.length; i++){
+      var isFinal = e.results[i].isFinal;
+      for(var j = 0; j < e.results[i].length; j++){
+        var t = e.results[i][j].transcript;
+        if(_sr.mode === 'wake'){
+          /* Buscar palabra clave NEXO */
+          if(wakeMatches(t)){ onWakeDetected(); return; }
+        } else if(_sr.mode === 'command' && isFinal){
+          /* Capturar el comando completo */
+          srOnCommand(t); return;
+        }
+      }
+    }
+  };
+
+  r.onerror = function(ev){
+    if(ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){
+      _wake.enabled = false;
+      _sr.mode = 'idle';
+      _chat.listening = false;
+      updateWakeUI();
+      addOnekMsg('Sin permiso de micrófono 😕 — revisa la configuración del navegador.','bot');
+      return;
+    }
+    /* Cualquier otro error: reiniciar si sigue activo */
+    if(_sr.mode !== 'idle') srScheduleRestart();
+  };
+
+  r.onend = function(){
+    /* Chrome corta la sesión ~60s; reiniciar automáticamente */
+    if(_sr.mode !== 'idle' && !_wake.restarting){
+      srScheduleRestart();
+    }
+    /* Si estaba escuchando un comando y se cortó, limpiar UI */
+    if(_sr.mode === 'command'){
+      _chat.listening = false;
+      el('onekVoiceBtn').classList.remove('listening');
+      el('onekVoiceBtn').textContent = '🎤';
+      el('onekVoiceBtn').title = 'Hablar con NEXO';
+    }
+  };
+
+  return r;
+}
+
+function srEnsure(){
+  if(!_sr.rec) _sr.rec = srInit();
+  return _sr.rec;
+}
+
+function srScheduleRestart(){
+  if(_wake.restartTimer) clearTimeout(_wake.restartTimer);
+  _wake.restarting = true;
+  _wake.restartTimer = setTimeout(function(){
+    if(_sr.mode !== 'idle'){
+      _wake.restarting = false;
+      try{ _sr.rec.start(); }catch(e){}
+    }
+  }, 800);
+}
+
+/* ── Wake word detectado: cambiar a modo comando SIN reiniciar SR ── */
+function onWakeDetected(){
+  var now = Date.now();
+  if(now - _wake.lastDetect < 3000) return;
+  _wake.lastDetect = now;
+
+  /* Flash visual */
+  var card = el('onekCard');
+  card.classList.add('wake-detected');
+  setTimeout(function(){ card.classList.remove('wake-detected'); }, 700);
+
+  if(!_chat.open) toggleOnekChat();
+
+  var respuestas = ['¿Dígame? 👂','¿En qué te ayudo? 🎤','Aquí estoy, dime 🤖','¡Hola! Te escucho 👋'];
+  var r = respuestas[Math.floor(Math.random()*respuestas.length)];
+  addOnekMsg(r,'bot');
+  if(_chat.tts) speakOnek(r);
+  setOnekMood('happy','¡Me llamaste! 👂');
+
+  /* CLAVE: solo cambiar el modo, NO parar ni reiniciar _sr.rec
+     Así el mic sigue activo y no se pide permiso de nuevo */
+  _sr.mode = 'command';
+  _chat.listening = true;
+  el('onekVoiceBtn').classList.add('listening');
+  el('onekVoiceBtn').textContent = '⏹';
+  el('onekVoiceBtn').title = 'Habla ahora… (clic para cancelar)';
+  onekBubble('Te escucho… 🎤', 3000);
+  el('wakeStatus').textContent = 'Escucha tu comando…';
+
+  /* Auto-retorno a wake si no habla en 8 s */
+  if(_sr.cmdTimer) clearTimeout(_sr.cmdTimer);
+  _sr.cmdTimer = setTimeout(function(){
+    if(_sr.mode === 'command') srReturnToWake();
+  }, 8000);
+}
+
+/* ── Procesar comando capturado ── */
+function srOnCommand(text){
+  if(_sr.cmdTimer){ clearTimeout(_sr.cmdTimer); _sr.cmdTimer = null; }
+  el('onekInput').value = text;
+  srReturnToWake();
+  onekSend();
+}
+
+/* ── Volver a modo wake (sin tocar el reconocedor) ── */
+function srReturnToWake(){
+  _chat.listening = false;
+  el('onekVoiceBtn').classList.remove('listening');
+  el('onekVoiceBtn').textContent = '🎤';
+  el('onekVoiceBtn').title = 'Hablar con NEXO';
+  if(_wake.enabled){
+    _sr.mode = 'wake';
+    el('wakeIndicator').classList.add('active');
+    el('wakeStatus').textContent = 'Escuchando "NEXO"…';
+  }
+}
+
+/* ── Control de la escucha continua ── */
+function wakeStart(){
+  var rec = srEnsure();
+  if(!rec || !_wake.enabled) return;
+  _sr.mode = 'wake';
+  _wake.restarting = false;
+  try { rec.start(); }
+  catch(e){ srScheduleRestart(); }
+  el('wakeIndicator').classList.add('active');
+  el('wakeStatus').textContent = 'Escuchando "NEXO"…';
+}
+
+function wakeScheduleRestart(){ srScheduleRestart(); }
+
+function wakeStop(){
+  _wake.enabled = false;
+  _wake.restarting = false;
+  _sr.mode = 'idle';
+  _chat.listening = false;
+  if(_wake.restartTimer){ clearTimeout(_wake.restartTimer); _wake.restartTimer = null; }
+  if(_sr.rec){ try { _sr.rec.stop(); } catch(e){} }
+  el('wakeIndicator').classList.remove('active');
+  el('onekVoiceBtn').classList.remove('listening');
+  el('onekVoiceBtn').textContent = '🎤';
+  updateWakeUI();
+}
+
+function toggleWakeWord(){
+  if(_wake.enabled){
+    wakeStop();
+    onekBubble('Escucha continua desactivada 🔕', 2500);
+  } else {
+    _wake.enabled = true;
+    updateWakeUI();
+    /* Una sola llamada a wakeStart — SpeechRecognition pide el mic
+       una única vez y lo mantiene; no hay getUserMedia separado */
+    wakeStart();
+    onekBubble('¡Listo! Di "NEXO" para llamarme 🎙️', 3000);
+  }
+}
+
+function updateWakeUI(){
+  var btn = el('onekWakeBtn');
+  if(_wake.enabled){
+    btn.classList.add('wake-on');
+    btn.title = 'Escucha continua ACTIVA — clic para desactivar';
+    btn.textContent = '👂';
+  } else {
+    btn.classList.remove('wake-on');
+    btn.title = 'Activar escucha continua — di "NEXO" para llamarme';
+    btn.textContent = '👂';
+    el('wakeIndicator').classList.remove('active');
+  }
+}
+
+/* Hablar con TTS (función separada reutilizable) */
+function speakOnek(text){
+  if(!_chat.tts || !window.speechSynthesis) return;
+  var utter = new SpeechSynthesisUtterance(text.replace(/[\u{1F000}-\u{1FFFF}]/gu,''));
+  utter.lang = 'es-ES';
+  if(_chat.voices && _chat.voices.length){
+    utter.voice = _chat.voices.find(function(v){ return v.lang.startsWith('es'); }) || null;
+  }
+  utter.rate = 1.05; utter.pitch = 1.1;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utter);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   WEB SPEECH API — Síntesis de voz + modo standalone
    ══════════════════════════════════════════════════════════════ */
 function initSpeech(){
-  /* Cargar voces disponibles */
+  /* Cargar voces TTS */
   if('speechSynthesis' in window){
-    function loadVoices(){
-      _chat.voices=speechSynthesis.getVoices();
-    }
+    function loadVoices(){ _chat.voices=speechSynthesis.getVoices(); }
     loadVoices();
     speechSynthesis.addEventListener('voiceschanged',loadVoices);
   }
-  /* Reconocimiento */
+  /* Verificar soporte — la instancia SR se crea al activar */
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){ el('onekVoiceBtn').title='Voz no disponible en este navegador'; el('onekVoiceBtn').style.opacity='.4'; return; }
-  _chat.recognition=new SR();
-  _chat.recognition.lang='es-ES';
-  _chat.recognition.continuous=false;
-  _chat.recognition.interimResults=false;
-  _chat.recognition.maxAlternatives=1;
-  _chat.recognition.onresult=function(e){
-    var text=e.results[0][0].transcript;
-    el('onekInput').value=text;
-    stopListening();
-    onekSend();
-  };
-  _chat.recognition.onerror=function(e){
-    /* Si el error es 'not-allowed', el permiso fue denegado */
-    if(e.error==='not-allowed'){
-      el('onekVoiceBtn').style.opacity='.4';
-      el('onekVoiceBtn').title='Permiso denegado — revisa la configuración del navegador';
-    }
-    stopListening();
-  };
-  _chat.recognition.onend=function(){ stopListening(); };
+  if(!SR){
+    el('onekVoiceBtn').title='Voz no disponible en este navegador';
+    el('onekVoiceBtn').style.opacity='.4';
+  }
 }
 
-/* Solicitar permiso de micrófono una sola vez y mantener el stream activo
-   para que el navegador no vuelva a preguntar en cada uso */
+/* acquireMic solo se usa cuando el botón 🎤 se pulsa manualmente
+   y la escucha continua NO está activa. Si _chat.micReady=true
+   (porque _sr.rec ya corrió), regresa inmediatamente sin diálogo. */
 function acquireMic(callback){
   if(_chat.micReady){ if(callback) callback(); return; }
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    if(callback) callback();
-    return;
+    if(callback) callback(); return;
   }
   navigator.mediaDevices.getUserMedia({audio:true, video:false})
     .then(function(stream){
-      _chat.micStream=stream;   /* Mantener referencia viva = permiso activo */
+      _chat.micStream=stream;
       _chat.micReady=true;
       if(callback) callback();
     })
@@ -4026,25 +4282,62 @@ function acquireMic(callback){
 }
 
 function startListening(){
-  if(!_chat.recognition) return;
   if(!_chat.open) toggleOnekChat();
-  /* Pedir micrófono una sola vez; si ya está concedido, ejecuta el callback de inmediato */
-  acquireMic(function(){
-    _chat.listening=true;
+
+  /* Caso A: wake word activo → el SR ya corre, solo cambiar modo */
+  if(_wake.enabled && _sr.rec && _chat.micReady){
+    if(_chat.listening) return;
+    _sr.mode = 'command';
+    _chat.listening = true;
     el('onekVoiceBtn').classList.add('listening');
-    el('onekVoiceBtn').textContent='⏹';
-    el('onekVoiceBtn').title='Habla ahora… (clic para cancelar)';
-    onekBubble('Te escucho… 🎤',3000);
-    try{ _chat.recognition.start(); }catch(e){}
+    el('onekVoiceBtn').textContent = '⏹';
+    el('onekVoiceBtn').title = 'Habla ahora… (clic para cancelar)';
+    onekBubble('Te escucho… 🎤', 3000);
+    el('wakeStatus').textContent = 'Escucha tu comando…';
+    if(_sr.cmdTimer) clearTimeout(_sr.cmdTimer);
+    _sr.cmdTimer = setTimeout(function(){
+      if(_sr.mode === 'command') srReturnToWake();
+    }, 8000);
+    return;
+  }
+
+  /* Caso B: sin wake word → iniciar SR standalone */
+  acquireMic(function(){
+    var rec = srEnsure();
+    if(!rec) return;
+    _sr.mode = 'command';
+    _chat.listening = true;
+    el('onekVoiceBtn').classList.add('listening');
+    el('onekVoiceBtn').textContent = '⏹';
+    el('onekVoiceBtn').title = 'Habla ahora… (clic para cancelar)';
+    onekBubble('Te escucho… 🎤', 3000);
+    try{ rec.start(); }catch(e){}
+    if(_sr.cmdTimer) clearTimeout(_sr.cmdTimer);
+    _sr.cmdTimer = setTimeout(function(){
+      if(_sr.mode === 'command') stopListening();
+    }, 8000);
   });
 }
+
 function stopListening(){
-  _chat.listening=false;
+  if(_sr.cmdTimer){ clearTimeout(_sr.cmdTimer); _sr.cmdTimer = null; }
+  _chat.listening = false;
   el('onekVoiceBtn').classList.remove('listening');
-  el('onekVoiceBtn').textContent='🎤';
-  el('onekVoiceBtn').title='Hablar con ONEK';
-  try{ _chat.recognition.stop(); }catch(e){}
+  el('onekVoiceBtn').textContent = '🎤';
+  el('onekVoiceBtn').title = 'Hablar con NEXO';
+
+  if(_wake.enabled){
+    /* Volver a modo wake SIN detener el reconocedor */
+    _sr.mode = 'wake';
+    el('wakeIndicator').classList.add('active');
+    el('wakeStatus').textContent = 'Escuchando "NEXO"…';
+  } else {
+    /* Sin wake word activo: parar el SR completamente */
+    _sr.mode = 'idle';
+    if(_sr.rec){ try{ _sr.rec.stop(); }catch(e){} }
+  }
 }
+
 function toggleListening(){
   if(_chat.listening) stopListening();
   else startListening();
@@ -4052,7 +4345,7 @@ function toggleListening(){
 function toggleTts(){
   _chat.tts=!_chat.tts;
   el('onekTtsBtn').classList.toggle('voice-on',_chat.tts);
-  el('onekTtsBtn').title=_chat.tts?'Silenciar voz de ONEK':'Activar voz de ONEK';
+  el('onekTtsBtn').title=_chat.tts?'Silenciar voz de NEXO':'Activar voz de NEXO';
   if(_chat.tts) onekBubble('¡Ahora hablaré! 🔊',2500);
   else{ speechSynthesis.cancel(); onekBubble('Voz desactivada 🔇',2000); }
 }
@@ -4074,11 +4367,11 @@ var _onek={
 };
 
 var ONEK_MSGS={
-  idle   :['Listo para medir…','Esperando datos…','Todo tranquilo 😐'],
+  idle   :['Listo para medir…','Esperando datos…','Todo tranquilo 😐','NEXO en espera…'],
   happy  :['¡Excelente señal! 🚀','¡Conexión perfecta! ✨','¡Velocidad máxima! 💚'],
   worried:['Hmm, algo raro…','Velocidad baja ⚠️','Detectando problemas…'],
   alert  :['¡Alerta! 🚨','¡Conexión crítica!','¡Ping muy alto! 🔴'],
-  wave   :['¡Hola! Soy ONEK 👋','¡Buenas! 👋','¿Todo bien? 👋'],
+  wave   :['¡Hola! Soy NEXO 👋','¡Buenas! 👋','¿Todo bien? 👋'],
   dance  :['🕺 ¡Fiesta de datos!','🎶 ¡Bailando bits!','💃 ¡Señal perfecta!']
 };
 
