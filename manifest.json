@@ -1,0 +1,42 @@
+{
+  "name": "Monitor de Ancho de Banda",
+  "short_name": "Monitor Red",
+  "description": "Monitor de red local con historial 90 días, heatmap, análisis SLA y notificaciones.",
+  "start_url": "./monitor-red.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#1e293b",
+  "lang": "es",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%231e293b'/%3E%3Ccircle cx='96' cy='96' r='60' fill='none' stroke='%2322c55e' stroke-width='10'/%3E%3Ccircle cx='96' cy='96' r='60' fill='none' stroke='%2322c55e' stroke-width='10' stroke-dasharray='251' stroke-dashoffset='63' stroke-linecap='round' transform='rotate(-90 96 96)'/%3E%3Ctext x='96' y='104' text-anchor='middle' fill='%2322c55e' font-size='36' font-family='system-ui' font-weight='700'%3E🌐%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%231e293b'/%3E%3Ccircle cx='256' cy='256' r='160' fill='none' stroke='%2322c55e' stroke-width='24'/%3E%3Ccircle cx='256' cy='256' r='160' fill='none' stroke='%2322c55e' stroke-width='24' stroke-dasharray='670' stroke-dashoffset='168' stroke-linecap='round' transform='rotate(-90 256 256)'/%3E%3Ctext x='256' y='280' text-anchor='middle' fill='%2322c55e' font-size='96' font-family='system-ui' font-weight='700'%3E🌐%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Iniciar Monitor",
+      "short_name": "Iniciar",
+      "description": "Arranca el monitoreo de red inmediatamente",
+      "url": "./monitor-red.html#start"
+    },
+    {
+      "name": "Ver Historial",
+      "short_name": "Historial",
+      "description": "Abre la vista de historial inteligente",
+      "url": "./monitor-red.html#history"
+    }
+  ]
+}
