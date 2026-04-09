@@ -3737,9 +3737,12 @@ var INTENTS=[
   /* Identidad */
   { keys:['quien eres','como te llamas','que eres','tu nombre','presentate'],
     fn: function(){ return 'Soy NEXO ⚡ — Network Explorer & eXpert Observer.\nSoy tu asistente 3D de monitoreo de red. Analizo tu conexión en tiempo real, leo el historial de IndexedDB y te ayudo a entender si tu ISP cumple lo que prometió.'; }},
-  /* Ayuda / comandos */
-  { keys:['ayuda','que puedes','que sabes','comandos','que haces','como te uso','instrucciones'],
-    fn: function(){ return '💡 Puedes preguntarme:\n• ¿Cómo está la conexión?\n• ¿Cuál es el ping actual?\n• ¿Cuál fue la peor hora hoy?\n• ¿Mi ISP cumple el contrato?\n• ¿Cuál es el promedio de hoy?\n• ¿Cuándo fue el último pico?\n• ¿Cuál es mi IP / ISP?\n• Genera un informe\n• Abre el historial\n• ¿Qué me recomiendas?\n• Empieza a medir / para de medir'; }},
+  /* Ayuda / comandos — muestra 5 funciones, sugiere pedir todas */
+  { keys:['ayuda','que puedes','que sabes','comandos','que haces','como te uso','instrucciones','para que sirves'],
+    fn: function(){ return '💡 Algunas cosas que puedo hacer:\n• ¿Cómo está la conexión ahora mismo?\n• ¿Cuál es mi IP pública?\n• ¿Quién es mi proveedor de internet?\n• ¿Cuál es el mejor momento para navegar?\n• Baila / date una vuelta / moonwalk\n\nPara ver todo di: "lista todas las funciones" 📋'; }},
+  /* Lista TODAS las funciones */
+  { keys:['lista todas las funciones','todas las funciones','lista completa','que puedes hacer todo','que mas sabes','todas tus habilidades','lista todo','todo lo que puedes','todo lo que sabes'],
+    fn: function(){ return '📋 Todo lo que puedo hacer:\n\n🌐 RED & MÉTRICAS\n• Ping, jitter, bajada, subida actuales\n• Promedio y records del día\n• Peor y mejor hora del día\n• Estado general de la conexión\n• Score de calidad (0-100)\n• Último pico de ping\n\n🔍 IDENTIFICACIÓN\n• Mi IP pública (con puntos ✅)\n• IP local\n• Proveedor de internet (ISP)\n• Protocolo de conexión\n\n📊 ANÁLISIS\n• Análisis SLA / contrato\n• Historial de 7 días\n• Predicción IA próximas horas\n• Mejor momento para navegar\n• Multi-ping 12 servidores globales\n\n🎮 MODOS DE TEST\n• Test Gaming (score + veredicto)\n• Test Streaming (calidad máxima)\n• Test Videollamada (apta o no)\n\n🧭 NAVEGACIÓN\n• Modo simple / modo técnico\n• Abrir historial, SLA, exportar\n• Abrir predicción IA / test\n• Tema oscuro / claro\n• Activar escucha continua\n• Iniciar / detener monitor\n\n🤸 MOVIMIENTOS\n• Bailar, girar 360°, moonwalk\n• Ponerse de cabeza, celebrar\n• Correr, meditar, estirarse\n• Asentir, encoger hombros, saludar\n\n💬 CONVERSACIÓN\n• Saludos y despedidas\n• ¿Cómo estás?, ¿cómo ves el internet?\n• ¿Qué es el ping / jitter?\n• Chiste tecnológico\n• Cuántos datos consume la app'; }},
   /* Estado actual */
   { keys:['como esta','estado','conexion','red','todo bien','que tal la','va bien','funciona'],
     fn: intentStatus },
@@ -3774,10 +3777,36 @@ var INTENTS=[
   { keys:['sla','contrato','cumple','incumplimiento','velocidad contratada','lo prometido','mi plan'],
     fn: intentSLA },
   /* ISP / IP */
-  { keys:['isp','proveedor','operador','quien da','mi internet de'],
-    fn: function(){ var isp=el('vISP').textContent; return isp&&isp!=='—'?'Tu proveedor es: '+isp+'\nIP pública: '+el('vPubIP').textContent+'\n'+el('vLoc').textContent:'Aún no he detectado tu ISP. Inicia el monitor para obtener esta información.'; }},
-  { keys:['ip','direccion ip','mi ip','cual es mi ip'],
-    fn: function(){ var ip=el('vPubIP').textContent; return ip&&ip!=='—'?'Tu IP pública es: '+ip+'\nIP local: '+el('vLocIP').textContent:'IP no detectada aún. Inicia el monitor.'; }},
+  { keys:['isp','proveedor','operador','quien da internet','mi proveedor','quien es mi proveedor','que compania','que empresa de internet'],
+    fn: function(){
+      var isp=el('vISP').textContent, loc=(el('vLoc')||{}).textContent||'';
+      if(!isp||isp==='—'||isp==='--') return 'Aún no he detectado tu proveedor. Inicia el monitor para obtener esa info.';
+      return '🌐 Tu proveedor de internet es: '+isp+(loc&&loc!=='—'?'\n📍 Ubicación: '+loc:'');
+    }},
+  { keys:['ip','direccion ip','mi ip','cual es mi ip','ip publica','dime mi ip','ver ip','que ip tengo'],
+    fn: function(){
+      var raw=(el('vPubIP')||{}).textContent||'';
+      var local=(el('vLocIP')||{}).textContent||'';
+      if(!raw||raw==='—'||raw==='--') return 'IP no detectada aún. Inicia el monitor.';
+      /* Formatear número largo como IP con puntos */
+      var ip = raw;
+      if(/^\d{8,}$/.test(raw.replace(/\s/g,''))){
+        var n=parseInt(raw.replace(/\s/g,''));
+        ip=((n>>>24)&255)+'.'+(( n>>>16)&255)+'.'+((n>>>8)&255)+'.'+(n&255);
+      }
+      return '🔍 Tu IP pública es: '+ip+(local&&local!=='—'&&local!=='--'?'\n🏠 IP local: '+local:'');
+    }},
+  /* Protocolo de conexión */
+  { keys:['protocolo','que protocolo','como funciona','ipv4','ipv6','protocolo de red','tcp ip','sobre que protocolo'],
+    fn: function(){
+      var ip=(el('vPubIP')||{}).textContent||'';
+      var proto='IPv4';
+      if(ip.indexOf(':')!==-1) proto='IPv6';
+      return '🔧 Tu conexión usa el protocolo '+proto+'\n'
+        +'• TCP/IP es la base de toda comunicación en internet\n'
+        +'• '+proto+': '+(proto==='IPv6'?'formato moderno de 128 bits, más espacio de direcciones':'formato estándar de 32 bits, la mayoría de ISPs lo usan')+'\n'
+        +'• Sobre TCP/IP viajan HTTP, HTTPS, DNS y todos los servicios web';
+    }},
   /* Mediciones */
   { keys:['cuantas mediciones','mediciones hoy','cuantos datos','registros'],
     fn: function(){ var n=el('vCount').textContent||'0'; return 'Hoy llevas '+n+' mediciones registradas en tu dispositivo. El historial se guarda durante 90 días.'; }},
@@ -3992,6 +4021,185 @@ var INTENTS=[
 
   { keys:['que version','version','version nexo','que version eres'],
     fn: function(){ return 'Soy NEXO ⚡ v'+(window.APP_VERSION||'2.1')+' — Network Explorer & eXpert Observer\nPWA local, sin servidores, 100% en tu dispositivo.'; }},
+
+  /* ── VELOCIDAD ACTUAL (natural) ── */
+  { keys:['cuanto es la velocidad','que velocidad tengo ahora','como va la velocidad','velocidad ahora mismo','como esta la velocidad','dime la velocidad','a que velocidad voy'],
+    fn: function(){
+      var d=(el('vDown')||{}).textContent||'--';
+      var u=(el('vUp')||{}).textContent||'--';
+      if(d==='--') return 'Aún no tengo datos de velocidad. ¿Quieres que inicie el monitor?';
+      return '⚡ Velocidad actual:\n• Bajada: '+d+' Mbps\n• Subida: '+u+' Mbps\n'+(parseFloat(d)>=20?'¡Vas rápido! 🚀':parseFloat(d)>=5?'Velocidad normal ✅':'Velocidad baja ⚠️');
+    }},
+
+  /* ── CÓMO VES EL INTERNET HOY ── */
+  { keys:['como ves el internet','como esta el internet hoy','que tal el internet','que opinas del internet','como esta la internet','como va el internet hoy'],
+    fn: function(){
+      var m=liveMetrics?liveMetrics():{};
+      var dr=today?today.filter(function(r){ return r.down&&r.down>0; }):[];
+      if(!dr.length&&!m.ping) return 'Honestamente no tengo datos aún 🤔 Inicia el monitor y en unos minutos te doy mi diagnóstico.';
+      var avg=dr.length?dr.reduce(function(s,r){return s+r.down;},0)/dr.length:0;
+      var mood=_onek.mood;
+      var opinion=mood==='happy'?'¡Lo veo muy bien hoy! Tu conexión está en forma 🚀':
+                  mood==='alert'?'Francamente no me gusta lo que veo 😟 Hay problemas serios.':
+                  mood==='worried'?'Está algo irregular hoy. No es lo ideal ⚠️':
+                  '¡Bastante estable! Nada fuera de lo normal ✅';
+      return '🌐 Mi opinión sobre tu internet hoy:\n'+opinion+(avg>0?'\n• Promedio de bajada: '+avg.toFixed(1)+' Mbps':'')+(m.ping?'\n• Ping actual: '+m.ping+' ms':'');
+    }},
+
+  /* ── PREDICCIÓN A X HORAS ── */
+  { keys:['como estara el internet','internet en unas horas','a que hora estara mejor','como estara la red','prediccion proximas horas','en cuantas horas mejora','cuando mejora'],
+    fn: function(){
+      if(!_ai||!_ai.model){
+        setTimeout(function(){ try{ openAiModal(); }catch(e){} },400);
+        return '🔮 Para predecir el futuro necesito entrenar mi modelo con tu historial.\nAbriendo el panel de Predicción IA ahora…';
+      }
+      var m=_ai.model;
+      var now=new Date().getHours();
+      var best=null, bestH=-1;
+      for(var h=0;h<24;h++){
+        var v=m.hourlyAvg[h];
+        if(v==null) continue;
+        if(best===null||v>best){ best=v; bestH=h; }
+      }
+      var next3=[];
+      for(var i=1;i<=3;i++){
+        var hh=(now+i)%24;
+        var pred=_ai.model.hourlyAvg[hh];
+        if(pred!=null) next3.push((now+i)+':00 → ~'+pred.toFixed(1)+' Mbps');
+      }
+      return '🔮 Predicción basada en '+m.validReadings+' mediciones:\n'
+        +(next3.length?next3.join('\n')+'\n':'')
+        +(bestH>=0?'⭐ Mejor momento del día: '+bestH+':00 (~'+best.toFixed(1)+' Mbps)':'');
+    }},
+
+  /* ── MEJOR MOMENTO PARA NAVEGAR ── */
+  { keys:['mejor momento para navegar','cuando navegar','mejor hora para descargar','cuando descargar','hora ideal','mejor hora para usar internet','cuando usar internet'],
+    fn: function(){
+      /* Intentar usar modelo IA primero */
+      if(_ai&&_ai.model&&_ai.model.validReadings>=5){
+        var m=_ai.model;
+        var best=null, bestH=-1, worst=null, worstH=-1;
+        for(var h=0;h<24;h++){
+          var v=m.hourlyAvg[h];
+          if(v==null) continue;
+          if(best===null||v>best){ best=v; bestH=h; }
+          if(worst===null||v<worst){ worst=v; worstH=h; }
+        }
+        var resp='⭐ Mejor momento para navegar:\n';
+        if(bestH>=0) resp+='• Hora ideal: '+bestH+':00 h (~'+best.toFixed(1)+' Mbps)\n';
+        if(worstH>=0) resp+='• Evita: '+worstH+':00 h (~'+worst.toFixed(1)+' Mbps)\n';
+        resp+='💡 Basado en tu historial real de '+m.validReadings+' mediciones.';
+        return resp;
+      }
+      /* Fallback con datos del día */
+      var dr=today?today.filter(function(r){ return r.down&&r.down>0; }):[];
+      if(dr.length<4) return 'Necesito más datos para decirte el mejor momento 📊\nDeja el monitor corriendo unas horas y te daré un análisis preciso.';
+      /* Calcular mejor hora del día actual */
+      var byH={};
+      dr.forEach(function(r){ var h=new Date(r.ts).getHours(); if(!byH[h]) byH[h]=[]; byH[h].push(r.down); });
+      var hours=Object.keys(byH).filter(function(h){return byH[h].length>=2;}).map(function(h){
+        return {h:parseInt(h),avg:byH[h].reduce(function(s,v){return s+v;},0)/byH[h].length};
+      }).sort(function(a,b){return b.avg-a.avg;});
+      if(!hours.length) return 'Aún sin datos suficientes por hora. Déjame medir más tiempo.';
+      var best=hours[0], worst=hours[hours.length-1];
+      return '⭐ Mejor momento para navegar hoy:\n• Mejor hora: '+best.h+':00 h ('+best.avg.toFixed(1)+' Mbps)\n'
+        +(worst?'• Peor hora: '+worst.h+':00 h ('+worst.avg.toFixed(1)+' Mbps)\n':'')
+        +'💡 Para predicciones más precisas usa el panel de IA 🔮';
+    }},
+
+  /* ── CHISTES / HUMOR ── */
+  { keys:['cuentame un chiste','un chiste','hazme reir','di algo gracioso','chiste de redes','chiste tecnologia'],
+    fn: function(){
+      var chistes=[
+        '¿Por qué el router fue al psicólogo?\n¡Porque tenía problemas de conexión emocional! 😄',
+        '¿Cómo llama un informático a su hijo?\n¡Bit! Y a la niña, ¡Pixel! 😂',
+        'Mi ping es tan malo que cuando hago videollamadas la otra persona me llama al día siguiente. 😅',
+        '¿Qué le dijo el cable Ethernet al WiFi?\n"Tú eres el inalámbrico, yo soy el serio de la familia." 🤣',
+        'Mi internet es tan lento que Google me devuelve resultados de la semana pasada. 📡'
+      ];
+      return chistes[Math.floor(Math.random()*chistes.length)];
+    }},
+
+  /* ── CUÁNTO CONSUME LA APP ── */
+  { keys:['consume datos','cuantos datos usa','gasta datos','consume internet','cuanto consume nexo','consume mb'],
+    fn: function(){ return '📊 Consumo de NEXO:\n• Cada medición son ~3-5 KB de tráfico de red\n• Con intervalo de 5 min: ~900 KB/día (~1 MB)\n• Con intervalo de 1 min: ~4-5 MB/día\n• El modelo IA trabaja 100% local — no consume datos externos\n✅ Prácticamente insignificante.'; }},
+
+  /* ── QUÉ ES EL JITTER ── */
+  { keys:['que es jitter','para que sirve jitter','jitter explicame','explica jitter'],
+    fn: function(){ return '📈 El jitter es la variación en el tiempo de llegada de los paquetes de datos.\n• Jitter bajo (<10ms): ideal para gaming y videollamadas\n• Jitter medio (10-30ms): aceptable para uso normal\n• Jitter alto (>30ms): puede causar cortes en voz y video\nEs tan importante como el ping — una conexión con ping 20ms pero jitter 50ms se siente peor que una de 40ms estable.'; }},
+
+  /* ── QUÉ ES EL PING ── */
+  { keys:['que es el ping','para que sirve ping','explica el ping','que significa ping'],
+    fn: function(){ return '⚡ El ping es el tiempo que tarda un paquete en ir y volver desde tu dispositivo a un servidor.\n• Se mide en milisegundos (ms)\n• <20ms: Excelente 🚀\n• 20-60ms: Muy bueno ✅\n• 60-120ms: Normal\n• >200ms: Problemático 🚨\nAfecta directamente a videojuegos, videollamadas y navegación web.'; }},
+
+  /* ── CUÁNTOS DATOS GUARDADOS ── */
+  { keys:['cuantos datos guardados','cuanta informacion tienes','cuanto historial tienes','datos en memoria','datos guardados hoy'],
+    fn: function(){
+      var n=today?today.length:0;
+      var cnt=(el('vCount')||{}).textContent||'0';
+      return '💾 Estado actual de mis datos:\n• Mediciones de hoy: '+(n||cnt)+'\n• Almacenamiento: IndexedDB local (solo en este dispositivo)\n• Retención: 90 días automáticos\n• Tamaño estimado: ~'+(Math.round((n||parseInt(cnt)||0)*0.004))+' KB';
+    }},
+
+  /* ── CUÁNDO SE INSTALÓ / PRIMER DATO ── */
+  { keys:['cuando empezaste','desde cuando mides','primer registro','primer dato','cuando te instale'],
+    fn: function(){
+      var dr=today||[];
+      if(!dr.length) return 'Aún no tengo mediciones guardadas hoy. El historial completo está en IndexedDB.';
+      var first=new Date(dr[0].ts);
+      return '📅 Primera medición de hoy: '+first.toLocaleTimeString()+'\nLlevo '+dr.length+' registros desde que inicié el monitor hoy.';
+    }},
+
+  /* ── ANIMACIONES / SKILLS FÍSICOS ── */
+  { keys:['baila','bailar','pon a bailar','dance','mueve','muevete','haz el baile'],
+    fn: function(){ setOnekMood('dance'); _onek.danceT=0; return ['¡A bailar! 🕺 ¡Que suene la música!','¡Buenas vibras! 🎶 Así se hace.','¡Prepárate que me pongo a mover! 💃'][Math.floor(Math.random()*3)]; }},
+
+  { keys:['date una vuelta','da una vuelta','gira','giro completo','da un giro','vuelta'],
+    fn: function(){ setOnekMood('spin'); _onek.spinT=0; return ['¡Ahí va mi vuelta! 🌀','¡Girando! ¿Mareado? ¡Yo no! 😄','¡Un 360 para ti! 🔄'][Math.floor(Math.random()*3)]; }},
+
+  { keys:['ponte de cabeza','cabeza abajo','invertido','volteate','al reves','boca abajo'],
+    fn: function(){ setOnekMood('headstand'); _onek.headstandT=0; return ['¡El mundo al revés! 🙃 ¡Mira qué talento!','¡Posición vertical invertida activada! 🤸','¿Así me ves mejor? ¡Ja! 😄'][Math.floor(Math.random()*3)]; }},
+
+  { keys:['celebra','celebremos','festeja','festejemos','celebra con migo','que celebres','muy bien','excelente nexo','genial nexo'],
+    fn: function(){ setOnekMood('celebrate'); _onek.celebT=0; return ['¡WOOOO! 🎉 ¡Lo celebramos!','¡Fiesta activada! 🥳','¡Esto merece una celebración! 🎊'][Math.floor(Math.random()*3)]; }},
+
+  { keys:['medita','meditacion','relajate','relax','descansa','modo zen','calmante'],
+    fn: function(){ setOnekMood('meditate'); _onek.meditT=0; return ['🧘 Entrando en modo zen…\nInhala… exhala… todo va a estar bien.','🌿 Meditando. La red fluye como el agua.','Modo tranquilidad activado 🧘 Respira.'][Math.floor(Math.random()*3)]; }},
+
+  { keys:['corre','correr','pon a correr','sprint','ve rapido','mode carrera','corre nexo'],
+    fn: function(){ setOnekMood('run'); _onek.runT=0; return ['¡SPRINT! 🏃 ¡A toda velocidad!','¡Activado modo carrera! 🚀 ¡No me alcanzan!','¡Que no pare! 💨 ¡Voy!'][Math.floor(Math.random()*3)]; }},
+
+  { keys:['estirate','estiramiento','stretch','estira los brazos','hazte grande'],
+    fn: function(){ setOnekMood('stretch'); _onek.stretchT=0; return ['¡Buenos días! 🌅 Estirando…','Ahhh… eso estuvo bien. 🧗','¡Brazos al cielo! ¡Arriba! 💪'][Math.floor(Math.random()*3)]; }},
+
+  { keys:['asiente','di que si','di si','asienta','mueve la cabeza','sí nexo','correcto nexo'],
+    fn: function(){ setOnekMood('nod'); _onek.nodT=0; return ['¡Sí, sí! ✅','¡Afirmativo! 🤖','¡Claro que sí! 👍'][Math.floor(Math.random()*3)]; }},
+
+  { keys:['encoge hombros','no sabes','te rindes','shrug','no se nexo','no tienes idea'],
+    fn: function(){ setOnekMood('shrug'); _onek.shrugT=0; return ['¡Pues… no sé! 🤷','Mmmm… esa sí me la pones difícil 😅','¡Honestamente no tengo ni idea! 🤷'][Math.floor(Math.random()*3)]; }},
+
+  { keys:['moonwalk','michael jackson','camina hacia atras','baile michael','walk backward'],
+    fn: function(){ setOnekMood('moonwalk'); _onek.moonT=0; return ['🕺 ¡Moonwalk activado! Llámame Michael.','¡Hacia atrás pero con estilo! 🌙','¡El rey del pop estaría orgulloso! 🎤'][Math.floor(Math.random()*3)]; }},
+
+  { keys:['saluda','di hola','levanta la mano','wave','saluda a todos'],
+    fn: function(){ if(!_onek.waving&&_onek.mood!=='dance'){ _onek.waving=true; _onek.waveT=0; } return ['¡Holaaa! 👋','¡Saludos a todos! ¡Aquí NEXO! 👋','¡Hey! 👋 ¿Cómo están?'][Math.floor(Math.random()*3)]; }},
+
+  /* ── CÓMO TE PUEDES MOVER ── */
+  { keys:['como puedes moverte','que movimientos sabes','que animaciones tienes','que trucos sabes','que puedes hacer fisicamente','habilidades fisicas','que sabe hacer tu cuerpo','muevete','movimientos'],
+    fn: function(){
+      return '🤸 Mis habilidades de movimiento:\n'
+        +'• "baila" — baile con ritmo 🕺\n'
+        +'• "date una vuelta" — giro de 360° 🌀\n'
+        +'• "ponte de cabeza" — inversión total 🙃\n'
+        +'• "celebra" — festejo con saltos 🎉\n'
+        +'• "medita" — modo zen 🧘\n'
+        +'• "corre" — sprint en el lugar 🏃\n'
+        +'• "estirate" — estiramiento de brazos 💪\n'
+        +'• "asiente" — decir sí con la cabeza ✅\n'
+        +'• "encoge hombros" — el clásico shrug 🤷\n'
+        +'• "moonwalk" — Michael Jackson style 🌙\n'
+        +'• "saluda" — levantar la mano 👋\n'
+        +'¡Pruébalos todos!';
+    }},
 ];
 
 function onekProcess(text){
@@ -4003,7 +4211,13 @@ function onekProcess(text){
   });
   if(best&&bestScore>0) return best.fn();
   /* Fallback amigable */
-  return 'Hmm, no entendí bien 🤔\nPuedes decirme cosas como:\n"¿cómo está el ping?", "modo simple", "historial", "promedio", "ayuda" o simplemente "hola".';
+  var _fallbacks=[
+    'Hmm, no capté bien eso 🤔 Prueba con:\n"¿cómo está la conexión?", "mi IP", "baila", "mejor momento para navegar"\n— o di "ayuda" para más ideas.',
+    'No entendí del todo 😅 Puedo ayudarte con la red, predicciones, animaciones y más.\nDi "lista todas las funciones" para ver todo lo que sé.',
+    'Eso no lo reconocí bien 🤖 Intenta ser más directo:\n"ping", "velocidad", "proveedor", "da una vuelta"\n— o di "ayuda" y te doy ideas.',
+    '¿Cómo? No te escuché bien 👂 Di "nexo, ayuda" y te cuento lo que puedo hacer.'
+  ];
+  return _fallbacks[Math.floor(Math.random()*_fallbacks.length)];
 }
 
 /* ── Handlers de intents con datos reales ── */
@@ -4955,12 +5169,156 @@ function animateOnek(){
     _onek.armR.rotation.x=-Math.sin(_onek.danceT*2)*0.3;
     _onek.head.rotation.z=Math.sin(_onek.danceT*2.5)*0.2;
   }
+  /* SPIN — vuelta completa en Y */
+  else if(_onek.mood==='spin'){
+    _onek.spinT = (_onek.spinT||0) + 0.07;
+    _onek.root.rotation.y = _onek.spinT * 4.5;
+    _onek.armL.rotation.z = 1.1 + Math.sin(_onek.spinT*2)*0.2;
+    _onek.armR.rotation.z = -1.1 - Math.sin(_onek.spinT*2)*0.2;
+    if(_onek.spinT > 1.5){
+      _onek.spinT = 0;
+      _onek.root.rotation.y = 0;
+      _onek.armL.rotation.z = 0.35;
+      _onek.armR.rotation.z = -0.35;
+      setOnekMood('idle');
+    }
+  }
+  /* HEADSTAND — ponerse de cabeza */
+  else if(_onek.mood==='headstand'){
+    _onek.headstandT = (_onek.headstandT||0) + 0.03;
+    var _ht = _onek.headstandT;
+    /* Rotación progresiva en Z hasta 180° */
+    var _targetRot = Math.PI;
+    _onek.root.rotation.z = Math.min(_targetRot, _ht * 2.2);
+    _onek.armL.rotation.z = 1.3 + Math.sin(_ht*3)*0.2;
+    _onek.armR.rotation.z = -1.3 - Math.sin(_ht*3)*0.2;
+    _onek.legL.rotation.x = Math.sin(_ht*2)*0.35;
+    _onek.legR.rotation.x = -Math.sin(_ht*2)*0.35;
+    if(_ht > 3.5){
+      _onek.headstandT = 0;
+      _onek.root.rotation.z = 0;
+      setOnekMood('idle');
+    }
+  }
+  /* CELEBRATE — festejo con salto */
+  else if(_onek.mood==='celebrate'){
+    _onek.celebT = (_onek.celebT||0) + 0.055;
+    var _ct = _onek.celebT;
+    _onek.armL.rotation.z = 1.3 + Math.sin(_ct*4)*0.3;
+    _onek.armR.rotation.z = -1.3 - Math.sin(_ct*4+0.8)*0.3;
+    _onek.armL.rotation.x = Math.sin(_ct*3)*0.4;
+    _onek.armR.rotation.x = -Math.sin(_ct*3)*0.4;
+    _onek.head.rotation.z = Math.sin(_ct*3.5)*0.18;
+    _onek.root.position.y = -0.10 + Math.abs(Math.sin(_ct*5))*0.18; /* saltos */
+    if(_ct > 4){ _onek.celebT = 0; setOnekMood('happy'); }
+  }
+  /* MEDITATE — respiración lenta */
+  else if(_onek.mood==='meditate'){
+    _onek.meditT = (_onek.meditT||0) + 0.018;
+    var _mt = _onek.meditT;
+    var _breath = Math.sin(_mt * 0.9) * 0.5 + 0.5; /* 0→1 suave */
+    _onek.armL.rotation.z = 0.9 + _breath * 0.2;
+    _onek.armR.rotation.z = -0.9 - _breath * 0.2;
+    _onek.armL.rotation.x = 0.25 + _breath * 0.1;
+    _onek.armR.rotation.x = 0.25 + _breath * 0.1;
+    _onek.head.rotation.z = 0;
+    _onek.head.rotation.y = Math.sin(_mt * 0.3) * 0.05;
+    _onek.root.rotation.z = Math.sin(_mt * 0.4) * 0.03;
+    /* escala suave simulando respiración en el root */
+    var _bs = 1.0 + _breath * 0.025;
+    if(_onek.root.scale) _onek.root.scale.set(_bs, _bs, _bs);
+    if(_mt > 8){ _onek.meditT = 0; if(_onek.root.scale) _onek.root.scale.set(1,1,1); setOnekMood('idle'); }
+  }
+  /* RUN — correr en el lugar */
+  else if(_onek.mood==='run'){
+    _onek.runT = (_onek.runT||0) + 0.1;
+    var _rt = _onek.runT;
+    _onek.legL.rotation.x = Math.sin(_rt * 6) * 0.55;
+    _onek.legR.rotation.x = -Math.sin(_rt * 6) * 0.55;
+    _onek.armL.rotation.x = Math.sin(_rt * 6) * 0.45;
+    _onek.armR.rotation.x = -Math.sin(_rt * 6) * 0.45;
+    _onek.armL.rotation.z = 0.2;
+    _onek.armR.rotation.z = -0.2;
+    _onek.root.rotation.z = Math.sin(_rt * 6) * 0.04;
+    _onek.root.position.y = -0.10 + Math.abs(Math.sin(_rt * 6)) * 0.06;
+    _onek.head.rotation.z = Math.sin(_rt * 3) * 0.05;
+    if(_rt > 5){ _onek.runT = 0; setOnekMood('idle'); }
+  }
+  /* STRETCH — estiramiento */
+  else if(_onek.mood==='stretch'){
+    _onek.stretchT = (_onek.stretchT||0) + 0.022;
+    var _st = _onek.stretchT;
+    var _prog = Math.min(1, _st * 0.6);
+    _onek.armL.rotation.z = 0.35 + _prog * 1.4;
+    _onek.armR.rotation.z = -0.35 - _prog * 1.4;
+    _onek.armL.rotation.x = -_prog * 0.5;
+    _onek.armR.rotation.x = -_prog * 0.5;
+    _onek.head.rotation.x = -_prog * 0.25;
+    if(_onek.root.scale){ var _ss = 1.0 + _prog * 0.06; _onek.root.scale.set(_ss, _ss, _ss); }
+    if(_st > 4){
+      _onek.stretchT = 0;
+      if(_onek.root.scale) _onek.root.scale.set(1,1,1);
+      _onek.head.rotation.x = 0;
+      setOnekMood('idle');
+    }
+  }
+  /* NOD — asentir con la cabeza */
+  else if(_onek.mood==='nod'){
+    _onek.nodT = (_onek.nodT||0) + 0.08;
+    var _nt = _onek.nodT;
+    _onek.head.rotation.x = Math.sin(_nt * 4) * 0.3;
+    _onek.head.rotation.z = 0;
+    if(_nt > 3){ _onek.nodT = 0; _onek.head.rotation.x = 0; setOnekMood('idle'); }
+  }
+  /* SHRUG — encogerse de hombros */
+  else if(_onek.mood==='shrug'){
+    _onek.shrugT = (_onek.shrugT||0) + 0.06;
+    var _sht = _onek.shrugT;
+    var _sh = Math.abs(Math.sin(_sht * 3)) * 0.5;
+    _onek.armL.rotation.z = 0.35 + _sh;
+    _onek.armR.rotation.z = -0.35 - _sh;
+    _onek.armL.rotation.x = -_sh * 0.4;
+    _onek.armR.rotation.x = -_sh * 0.4;
+    _onek.head.rotation.z = Math.sin(_sht * 2.5) * 0.12;
+    if(_sht > 2.5){
+      _onek.shrugT = 0;
+      _onek.armL.rotation.x = 0; _onek.armR.rotation.x = 0;
+      setOnekMood('idle');
+    }
+  }
+  /* MOONWALK — desliz lateral con piernas alternas */
+  else if(_onek.mood==='moonwalk'){
+    _onek.moonT = (_onek.moonT||0) + 0.05;
+    var _mwt = _onek.moonT;
+    _onek.root.position.x = Math.sin(_mwt * 1.2) * 0.18;
+    _onek.root.rotation.z = Math.sin(_mwt * 2.4) * 0.08;
+    _onek.legL.rotation.x = Math.sin(_mwt * 4) * 0.3;
+    _onek.legR.rotation.x = -Math.sin(_mwt * 4 + Math.PI/4) * 0.3;
+    _onek.armL.rotation.z = 0.5 + Math.sin(_mwt * 2) * 0.3;
+    _onek.armR.rotation.z = -0.5 - Math.sin(_mwt * 2 + 1) * 0.3;
+    _onek.head.rotation.y = Math.sin(_mwt * 1.5) * 0.2;
+    if(_mwt > 5){
+      _onek.moonT = 0;
+      _onek.root.position.x = 0;
+      _onek.root.rotation.z = 0;
+      setOnekMood('idle');
+    }
+  }
 
   /* ── Color mood: cyan base → verde/rojo/naranja/morado según estado ── */
-  var moodCol = _onek.mood==='happy'  ? 0x00ff88 :
-                _onek.mood==='alert'  ? 0xff2222 :
-                _onek.mood==='worried'? 0xffaa00 :
-                _onek.mood==='dance'  ? 0xcc44ff : 0x00d4ff;
+  var moodCol = _onek.mood==='happy'     ? 0x00ff88 :
+                _onek.mood==='alert'     ? 0xff2222 :
+                _onek.mood==='worried'   ? 0xffaa00 :
+                _onek.mood==='dance'     ? 0xcc44ff :
+                _onek.mood==='spin'      ? 0x00eeff :
+                _onek.mood==='headstand' ? 0xff66cc :
+                _onek.mood==='celebrate' ? 0xffdd00 :
+                _onek.mood==='meditate'  ? 0x44ffcc :
+                _onek.mood==='run'       ? 0xff8800 :
+                _onek.mood==='stretch'   ? 0x88ff44 :
+                _onek.mood==='nod'       ? 0x00ccff :
+                _onek.mood==='shrug'     ? 0xcccccc :
+                _onek.mood==='moonwalk'  ? 0xff44aa : 0x00d4ff;
   var moodPulse = 0.55 + Math.sin(t * (_onek.mood==='alert'?9:1.8)) * 0.45;
 
   /* Emissive glow de mood en todos los materiales PBR del modelo GLTF */
