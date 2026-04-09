@@ -277,6 +277,10 @@
     #onekFoot{display:flex;justify-content:center;align-items:center;gap:6px;
       padding:4px 10px;background:#1e293b;border-top:1px solid #1a2640}
     #onekMood{font-size:.62rem;color:#475569;text-align:center;flex:1}
+    #onekVerBadge{font-size:.50rem;font-weight:700;letter-spacing:.04em;
+      color:#38bdf8;background:#0c1a2e;border:1px solid #1e3a5f;
+      border-radius:4px;padding:1px 5px;white-space:nowrap;flex-shrink:0;
+      font-family:monospace;opacity:.85;}
     .onek-mini{width:42px;height:42px;border-radius:50%;background:#1e293b;
       border:2px solid #334155;display:flex;align-items:center;justify-content:center;
       font-size:1.4rem;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.4);
@@ -808,7 +812,7 @@
       <div class="wake-dot"></div>
       <span id="wakeStatus">Escuchando "NEXO"…</span>
     </div>
-    <div id="onekFoot"><div id="onekMood">Esperando inicio…</div></div>
+    <div id="onekFoot"><div id="onekMood">Esperando inicio…</div><div id="onekVerBadge">v2.1</div></div>
     <!-- Panel de chat -->
     <div id="onekChat">
       <div id="onekMessages"></div>
@@ -3987,7 +3991,7 @@ var INTENTS=[
     fn: function(){ return 'Soy 100% local 🔒\nTodos tus datos se guardan solo en tu dispositivo (IndexedDB). No envío nada a servidores externos.'; }},
 
   { keys:['que version','version','version nexo','que version eres'],
-    fn: function(){ return 'Soy NEXO ⚡ — Network Explorer & eXpert Observer\nversión local PWA. ¡Instalable en cualquier dispositivo!'; }},
+    fn: function(){ return 'Soy NEXO ⚡ v'+(window.APP_VERSION||'2.1')+' — Network Explorer & eXpert Observer\nPWA local, sin servidores, 100% en tu dispositivo.'; }},
 ];
 
 function onekProcess(text){
@@ -4358,17 +4362,66 @@ function updateWakeUI(){
   }
 }
 
+/* ── Detección iOS ─────────────────────────────────────────── */
+var _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+var _iosSpeechUnlocked = false;
+
+/* Desbloquear AudioContext en iOS con el primer gesto del usuario */
+function _unlockSpeech(){
+  if(!_isIOS || _iosSpeechUnlocked) return;
+  /* Hablar un utterance vacío y cancelarlo inmediatamente — desbloquea el pipeline */
+  try{
+    var u = new SpeechSynthesisUtterance('');
+    u.volume = 0;
+    speechSynthesis.speak(u);
+    speechSynthesis.cancel();
+  }catch(e){}
+  _iosSpeechUnlocked = true;
+}
+
 /* Hablar con TTS (función separada reutilizable) */
 function speakOnek(text){
   if(!_chat.tts || !window.speechSynthesis) return;
-  var utter = new SpeechSynthesisUtterance(text.replace(/[\u{1F000}-\u{1FFFF}]/gu,''));
-  utter.lang = 'es-ES';
-  if(_chat.voices && _chat.voices.length){
-    utter.voice = _chat.voices.find(function(v){ return v.lang.startsWith('es'); }) || null;
+  /* Limpiar emojis y caracteres especiales */
+  var clean = text
+    .replace(/[\u{1F000}-\u{1FFFF}]/gu,'')
+    .replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]/g,'')
+    .replace(/[\u2600-\u27FF]/g,'')
+    .trim();
+  if(!clean) return;
+
+  function _doSpeak(){
+    try{
+      var utter = new SpeechSynthesisUtterance(clean);
+      utter.lang = 'es-ES';
+      /* Obtener voces frescas (iOS no las tiene listas al inicio) */
+      var voices = speechSynthesis.getVoices();
+      if(voices && voices.length){
+        var esVoice = voices.find(function(v){ return v.lang==='es-ES'; })
+                   || voices.find(function(v){ return v.lang.startsWith('es'); })
+                   || null;
+        if(esVoice) utter.voice = esVoice;
+      }
+      utter.rate = _isIOS ? 1.0 : 1.05;
+      utter.pitch = 1.1;
+      utter.volume = 1.0;
+      utter.onerror = function(e){ /* silencioso */ };
+      speechSynthesis.cancel();
+      if(_isIOS){
+        /* iOS necesita un pequeño delay después del cancel */
+        setTimeout(function(){ speechSynthesis.speak(utter); }, 300);
+      } else {
+        speechSynthesis.speak(utter);
+      }
+    }catch(e){ /* Safari puede lanzar en contexto restringido */ }
   }
-  utter.rate = 1.05; utter.pitch = 1.1;
-  speechSynthesis.cancel();
-  speechSynthesis.speak(utter);
+
+  /* Si las voces aún no cargan (iOS), esperar un ciclo */
+  if(_isIOS && speechSynthesis.getVoices().length === 0){
+    setTimeout(_doSpeak, 500);
+  } else {
+    _doSpeak();
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -4377,9 +4430,25 @@ function speakOnek(text){
 function initSpeech(){
   /* Cargar voces TTS */
   if('speechSynthesis' in window){
-    function loadVoices(){ _chat.voices=speechSynthesis.getVoices(); }
+    function loadVoices(){
+      _chat.voices = speechSynthesis.getVoices();
+    }
     loadVoices();
-    speechSynthesis.addEventListener('voiceschanged',loadVoices);
+    speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    /* iOS: intentar cargar voces con polling si voiceschanged no dispara */
+    if(_isIOS){
+      var _iosVoicePoll = 0;
+      var _iosVoiceTimer = setInterval(function(){
+        _iosVoicePoll++;
+        var v = speechSynthesis.getVoices();
+        if(v && v.length){ _chat.voices = v; clearInterval(_iosVoiceTimer); }
+        if(_iosVoicePoll > 20) clearInterval(_iosVoiceTimer);
+      }, 250);
+    }
+  }
+  /* Desbloquear en el primer toque (iOS) */
+  if(_isIOS){
+    document.addEventListener('touchstart', _unlockSpeech, {once:true, passive:true});
   }
   /* Verificar soporte — la instancia SR se crea al activar */
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -4474,14 +4543,23 @@ function toggleTts(){
   _chat.tts=!_chat.tts;
   el('onekTtsBtn').classList.toggle('voice-on',_chat.tts);
   el('onekTtsBtn').title=_chat.tts?'Silenciar voz de NEXO':'Activar voz de NEXO';
-  if(_chat.tts) onekBubble('¡Ahora hablaré! 🔊',2500);
-  else{ speechSynthesis.cancel(); onekBubble('Voz desactivada 🔇',2000); }
+  if(_chat.tts){
+    _unlockSpeech(); /* gesto del usuario — desbloquea iOS */
+    onekBubble('¡Ahora hablaré! 🔊',2500);
+    /* Prueba inmediata en iOS para confirmar que funciona */
+    if(_isIOS) setTimeout(function(){ speakOnek('Voz activada'); }, 400);
+  } else {
+    speechSynthesis.cancel();
+    onekBubble('Voz desactivada 🔇',2000);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
    ROBOT ONEK — Mascota 3D interactiva con Three.js
    Reacciona al estado de la conexión en tiempo real.
    ══════════════════════════════════════════════════════════════ */
+
+var APP_VERSION = '2.1';
 
 var _onek={
   scene:null,cam:null,ren:null,
@@ -4512,6 +4590,10 @@ function onekBubble(text, duration){
 }
 
 function initOnek(){
+  /* Mostrar versión en el footer */
+  var _verEl = el('onekVerBadge');
+  if(_verEl) _verEl.textContent = 'v' + (APP_VERSION||'2.1');
+
   if(typeof THREE==='undefined'){
     el('onekWrap').style.display='none'; return;
   }
