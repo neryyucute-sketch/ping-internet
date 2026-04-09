@@ -14,6 +14,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
+  <!-- Robot 3D embebido como base64 para funcionar con file:// sin restricciones XHR -->
+  <script src="atom_robot_data.js"></script>
   <style>
     :root{
       --bg:#0f172a;--s:#1e293b;--b:#334155;
@@ -4393,11 +4396,11 @@ function initOnek(){
       _onek.scene=new THREE.Scene();
   _onek.scene.background=new THREE.Color(0x010308);
   _onek.scene.fog=new THREE.Fog(0x010308,16,34);
-  _onek.scene.add(new THREE.AmbientLight(0x000000,1));
+  _onek.scene.add(new THREE.AmbientLight(0x112233,1.2));
 
-  _onek.cam=new THREE.PerspectiveCamera(44,160/190,0.1,50);
-  _onek.cam.position.set(0,0.05,5.8);
-  _onek.cam.lookAt(0,0.05,0);
+  _onek.cam=new THREE.PerspectiveCamera(46,160/190,0.1,50);
+  _onek.cam.position.set(0,0.2,5.2);
+  _onek.cam.lookAt(0,0.2,0);
 
   _onek.ren=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:false});
   _onek.ren.setSize(160,190);
@@ -4489,223 +4492,173 @@ function initOnek(){
     return a;
   }
 
+  /* ══ LUCES ADICIONALES PARA MODELO PBR ══ */
+  var _dL1=new THREE.DirectionalLight(0x88bbff,2.2);
+  _dL1.position.set(2,4,4);
+  _onek.scene.add(_dL1);
+  var _dL2=new THREE.DirectionalLight(0x002244,1.4);
+  _dL2.position.set(-3,-1,-3);
+  _onek.scene.add(_dL2);
+  var _hemi=new THREE.HemisphereLight(0x0a1a33,0x000000,1.8);
+  _onek.scene.add(_hemi);
+
+  /* ══ GRUPO RAÍZ PLACEHOLDER ══ */
   _onek.root=new THREE.Group();
-
-  /* ══════════════════════════════════
-     CABEZA — casco negro redondeado
-     ══════════════════════════════════ */
-  _onek.head=new THREE.Group();
-  _onek.head.position.y=1.24;
-
-  /* Superficie exterior: elipsoide Optimus
-     rx=0.36 ancho, ry=0.44 alto, rz=0.33 prof. (más plana atrás) */
-  var HRX=0.36,HRY=0.44,HRZ=0.33;
-  var hS=E(HRX,HRY,HRZ,190);
-  _onek.head.add(pts(hS,W,0.036));
-  _onek.head.add(pts(hS,W,0.09,0.11)); /* glow */
-  _onek.head.add(pts(E(HRX*0.55,HRY*0.55,HRZ*0.55,55),D,0.028,0.40)); /* interior */
-
-  /* ── VISERA AMPLIA proyectada sobre el elipsoide ──
-     Proyección matemática exacta: cada punto cae en la superficie frontal */
-  var vArr=[];
-  for(var vi=0;vi<88;vi++){
-    var vx=(Math.random()-.5)*0.68;
-    var vy=0.05+(Math.random()-.5)*0.070;
-    var nx=vx/HRX, ny=vy/HRY;
-    var term=1-nx*nx-ny*ny;
-    var vz=HRZ*Math.sqrt(Math.max(0.04,term))*0.93;
-    vArr.push(vx,vy,vz);
-  }
-  _onek.visor=pts(vArr,V,0.072);
-  _onek.head.add(_onek.visor);
-  _onek.head.add(pts(vArr,V,0.22,0.35)); /* glow amplio visera */
-
-  _onek.antTop=pts([0,0.24,0.32],G,0.080);
-  _onek.head.add(_onek.antTop);
-  _onek.mouth=pts([0,0,0],D,0.01,0.01);
-  _onek.halo=null;
-  _onek.root.add(_onek.head);
-
-  /* ══════════════════════════════════
-     CUELLO corto
-     ══════════════════════════════════ */
-  _onek.root.add(pts(C(0.10,0.13,0.18,22,0,0.90,0),D,0.030,0.55));
-  _onek.root.add(lin([0,0.99,0,0,0.81,0],D,0.60));
-
-  /* ══════════════════════════════════
-     TORSO — proporciones Optimus:
-     muy ancho en pecho, cintura mínima
-     ══════════════════════════════════ */
-  /* Pecho superior (el más amplio) */
-  var c1=C(0.50,0.47,0.30,200,0,0.66,0);
-  _onek.root.add(pts(c1,W,0.038));
-  _onek.root.add(pts(c1,W,0.10,0.10));
-
-  /* Panel frontal pecho — más denso y brillante */
-  _onek.root.add(pts(B(0.50,0.28,0.06,70,0,0.66,0.47),W,0.040,0.80));
-  _onek.root.add(pts(B(0.50,0.28,0.06,70,0,0.66,0.47),W,0.10,0.15));
-
-  /* Pecho inferior */
-  var c2=C(0.47,0.40,0.34,180,0,0.37,0);
-  _onek.root.add(pts(c2,W,0.036));
-  _onek.root.add(pts(c2,W,0.09,0.09));
-
-  /* CINTURA ESTRECHA — diferencia dramática con el pecho */
-  var cw=C(0.28,0.26,0.18,80,0,0.12,0);
-  _onek.root.add(pts(cw,D,0.032,0.65));
-
-  /* ZONA MECÁNICA CENTRAL (pelvis expuesta oscura) */
-  var mp=C(0.28,0.30,0.32,110,0,-0.10,0);
-  _onek.root.add(pts(mp,D,0.032,0.60));
-  _onek.root.add(pts(R(0.27,32,0,-0.10,0),D,0.036,0.50));
-  _onek.root.add(pts(R(0.27,32,0, 0.06,0),D,0.034,0.45));
-  /* Detalle mecánico: barras verticales en pelvis */
-  for(var pi=-1;pi<=1;pi+=2){
-    _onek.root.add(lin([pi*0.22,0.06,0, pi*0.22,-0.28,0],D,0.45));
-    _onek.root.add(lin([pi*0.14,0.06,0, pi*0.14,-0.28,0],D,0.35));
-  }
-
-  /* Pelvis inferior */
-  _onek.root.add(pts(C(0.30,0.25,0.14,60,0,-0.32,0),D,0.030,0.55));
-
-  /* Columna vertebral + estructura */
-  _onek.root.add(lin([
-    0, 0.82,0,  0,-0.40,0,          /* columna */
-   -0.50,0.78,0, 0.50,0.78,0,       /* barra hombros */
-   -0.24,-0.38,0, 0.24,-0.38,0,     /* barra caderas */
-   -0.46,0.78,0, 0.24,-0.38,0,      /* diagonal */
-    0.46,0.78,0,-0.24,-0.38,0
-  ],D,0.30));
-
-  /* NÚCLEO pecho (mood) */
-  var chO=S(0.078,22,0,0.66,0.50);
-  _onek.chest=pts(chO,W,0.052);
-  _onek.root.add(_onek.chest);
-  _onek.root.add(pts(chO,W,0.15,0.22));
-  _onek.coreRing=pts(R(0.148,34,0,0.66,0.47),W,0.038);
-  _onek.root.add(_onek.coreRing);
-
-  /* ══════════════════════════════════
-     HOMBROS — enormes caps redondeados
-     Pivote en articulación, no en cap
-     ══════════════════════════════════ */
-  function mkArm(side){
-    var g=new THREE.Group();
-    /* Pivote en la articulación del hombro */
-    g.position.set(side*0.62, 0.68, 0);
-    /* Leve inclinación natural: brazo cae con pequeño ángulo */
-    g.rotation.z = side * 0.10;   /* separado del torso */
-    g.rotation.x = 0.08;          /* ligeramente adelante */
-
-    /* PAULDRON HOMBRO — media elipsoide aplanada, estilo Optimus
-       rx ancho lateral, ry altura (plana), rz profundidad front-back */
-    var pOx=side*0.18, pOy=0.06;
-    var padArr=PAD(0.30,0.16,0.24,90,pOx,pOy,0);
-    g.add(pts(padArr,W,0.040));
-    g.add(pts(padArr,W,0.11,0.14)); /* glow */
-    /* Borde frontal del hombro más brillante */
-    g.add(pts(PAD(0.28,0.12,0.20,40,pOx,pOy,0),W,0.038,0.70));
-
-    /* Articulación hombro (nodo oscuro bajo la placa) */
-    g.add(pts(S(0.085,24),G,0.048));
-    g.add(pts(S(0.085,24),G,0.13,0.18));
-
-    /* BRAZO SUPERIOR largo */
-    var uA=C(0.105,0.088,0.60,85,0,-0.37,0);
-    g.add(pts(uA,W,0.036));
-    g.add(pts(uA,W,0.09,0.10));
-
-    /* CODO: nodo prominente oscuro */
-    g.add(pts(S(0.076,24,0,-0.70,0),G,0.050));
-    g.add(pts(S(0.076,24,0,-0.70,0),G,0.14,0.18));
-    g.add(pts(R(0.076,18,0,-0.70,0),D,0.036,0.50));
-
-    /* ANTEBRAZO largo */
-    var lA=C(0.085,0.066,0.54,70,0,-1.00,0);
-    g.add(pts(lA,W,0.034));
-
-    /* MUÑECA */
-    g.add(pts(R(0.062,16,0,-1.30,0),D,0.036,0.55));
-
-    /* MANO mecánica — cluster oscuro compacto */
-    g.add(pts(B(0.11,0.24,0.07,35,0,-1.46,0),D,0.032,0.70));
-    /* 4 dedos como líneas */
-    var fd=side<0?[-0.040,-0.013,0.013,0.040]:[0.040,0.013,-0.013,-0.040];
-    for(var fi=0;fi<4;fi++) g.add(lin([fd[fi],-1.33,0, fd[fi],-1.60,0],D,0.55));
-
-    /* Líneas esqueleto brazo */
-    g.add(lin([
-      0,0,0,       0,-0.70,0,
-      0,-0.70,0,   0,-1.30,0,
-      0,-1.30,0,   0,-1.58,0
-    ],D,0.42));
-
-    return g;
-  }
-  _onek.armL=mkArm(-1);
-  _onek.armR=mkArm(1);
-  _onek.root.add(_onek.armL,_onek.armR);
-
-  /* ══════════════════════════════════
-     PIERNAS — largas y delgadas
-     Posición pie ancho (Optimus stance)
-     ══════════════════════════════════ */
-  function mkLeg(side){
-    var g=new THREE.Group();
-    g.position.set(side*0.21,-0.40,0);
-    g.rotation.z=side*0.03; /* leve abertura */
-
-    /* CADERA (articulación) */
-    g.add(pts(S(0.090,26),G,0.050));
-    g.add(pts(S(0.090,26),G,0.14,0.18));
-
-    /* MUSLO largo y ovalado */
-    var thA=C(0.148,0.118,0.64,108,0,-0.40,0);
-    g.add(pts(thA,W,0.038));
-    g.add(pts(thA,W,0.095,0.09));
-    /* Panel frontal muslo */
-    g.add(pts(B(0.18,0.52,0.04,40,0,-0.40,0.12),W,0.036,0.65));
-
-    /* RODILLA: nodo muy prominente, mecanismo visible */
-    g.add(pts(S(0.088,26,0,-0.76,0),G,0.052));
-    g.add(pts(S(0.088,26,0,-0.76,0),G,0.15,0.20));
-    g.add(pts(R(0.086,20,0,-0.76,0),D,0.038,0.55));
-    /* Detalle: "cap" rodilla lateral */
-    g.add(pts(disc(0.07,16,side*0.09,-0.76,0),G,0.040,0.55));
-
-    /* PANTORRILLA larga y delgada */
-    var shA=C(0.105,0.078,0.64,100,0,-1.12,0);
-    g.add(pts(shA,W,0.036));
-    /* Panel frontal pantorrilla */
-    g.add(pts(B(0.14,0.52,0.04,35,0,-1.12,0.10),W,0.034,0.60));
-
-    /* TOBILLO */
-    g.add(pts(S(0.056,16,0,-1.48,0),D,0.042));
-    g.add(pts(R(0.056,14,0,-1.48,0),D,0.034,0.50));
-
-    /* PIE: plataforma ancha y plana — característica del Optimus */
-    g.add(pts(B(0.22,0.075,0.38,38,0,-1.59,0.06),W,0.034,0.78));
-    g.add(pts(B(0.22,0.04, 0.38,20,0,-1.65,0.06),D,0.030,0.55));
-
-    /* Líneas esqueleto pierna */
-    g.add(lin([
-      0, 0,0,      0,-0.76,0,
-      0,-0.76,0,   0,-1.48,0,
-      0,-1.48,0,   0,-1.65,0
-    ],D,0.44));
-
-    return g;
-  }
-  _onek.legL=mkLeg(-1);
-  _onek.legR=mkLeg(1);
-  _onek.root.add(_onek.legL,_onek.legR);
-
-  buildOnekParticles();
   _onek.root.position.y=0.10;
   _onek.scene.add(_onek.root);
 
-  /* Iniciar el loop de renderizado */
+  /* Stubs para animateOnek (funcionan mientras carga el GLB) */
+  var _ROT_STUB={rotation:{x:0,y:0,z:0}};
+  _onek.head  =_ROT_STUB;
+  _onek.armL  =_ROT_STUB;
+  _onek.armR  =_ROT_STUB;
+  _onek.legL  =_ROT_STUB;
+  _onek.legR  =_ROT_STUB;
+  _onek.visor =null;
+  _onek.chest =null;
+  _onek.halo  =null;
+  _onek.antTop=null;
+  _onek.meshList=[];
+
+  /* ══ PARTÍCULAS FLOTANTES DE FONDO ══ */
+  buildOnekParticles();
+
+  /* ══ SETUP Y CARGA DEL MODELO 3D ══
+     Usa GLTFLoader.parse() con datos base64 embebidos en atom_robot_data.js
+     Esto evita XHR/fetch hacia file:// que Chrome/Edge bloquean por seguridad. ══ */
+
+  function _onGLTFLoaded(gltf){
+    var model=gltf.scene;
+    var _box=new THREE.Box3().setFromObject(model);
+    var _sz =_box.getSize(new THREE.Vector3());
+    var _ctr=_box.getCenter(new THREE.Vector3());
+    var _sc =3.8/Math.max(_sz.x,_sz.y,_sz.z);
+    model.scale.setScalar(_sc);
+    model.position.set(-_ctr.x*_sc,-_box.min.y*_sc-1.9,-_ctr.z*_sc);
+    if(_onek.coreLight) _onek.coreLight.position.set(0,_sz.y*_sc*0.35,2.2);
+    model.traverse(function(node){
+      if(node.isMesh){
+        if(node.material&&node.material.isMeshStandardMaterial){
+          node.material=node.material.clone();
+          node.material.emissive=new THREE.Color(0x001a33);
+          node.material.emissiveIntensity=0.6;
+        }
+        _onek.meshList.push(node);
+      }
+    });
+    _onek.armR=model.getObjectByName('Armature RArm1')||_ROT_STUB;
+    _onek.armL=model.getObjectByName('Armature LArm') ||_ROT_STUB;
+    _onek.legR=model.getObjectByName('Armature RLeg') ||_ROT_STUB;
+    _onek.legL=model.getObjectByName('Armature LLeg') ||_ROT_STUB;
+    _onek.head=_ROT_STUB;
+    var _rArr=[];
+    for(var _ri=0;_ri<40;_ri++){var _rt=(_ri/40)*Math.PI*2;_rArr.push(0.18*Math.cos(_rt),_sz.y*_sc*0.28,0.18*Math.sin(_rt));}
+    _onek.coreRing=new THREE.Points(
+      new THREE.BufferGeometry().setAttribute('position',new THREE.BufferAttribute(new Float32Array(_rArr),3)),
+      new THREE.PointsMaterial({color:0x00d4ff,size:0.040,transparent:true,opacity:0.95,
+        blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true}));
+    _onek.root.add(_onek.coreRing);
+    _onek.antTop=new THREE.Points(
+      new THREE.BufferGeometry().setAttribute('position',new THREE.BufferAttribute(new Float32Array([0,_sz.y*_sc*0.56,0]),3)),
+      new THREE.PointsMaterial({color:0x00d4ff,size:0.10,transparent:true,opacity:0.9,
+        blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true}));
+    _onek.root.add(_onek.antTop);
+    _onek.root.add(model);
+    _onek.modelLoaded=true;
+    onekBubble('🤖 Modelo 3D listo',2500);
+  }
+
+  function _doParseGLB(ldr){
+    /* Convertir base64 → ArrayBuffer y parsear sin XHR */
+    try{
+      var b64=window._ROBOT_GLB;
+      var bin=atob(b64);
+      var buf=new ArrayBuffer(bin.length);
+      var view=new Uint8Array(buf);
+      for(var _i=0;_i<bin.length;_i++) view[_i]=bin.charCodeAt(_i);
+      ldr.parse(buf,'',_onGLTFLoaded,function(e){
+        console.warn('NEXO parse error:',e);
+        onekBubble('⚠️ Error parseando modelo 3D',3000);
+        _buildParticleRobot();
+      });
+    }catch(e2){
+      console.warn('NEXO base64 error:',e2);
+      _buildParticleRobot();
+    }
+  }
+
+  function _doLoadGLB(){
+    onekBubble('⏳ Procesando modelo 3D…',8000);
+    if(typeof THREE.GLTFLoader==='undefined'){
+      onekBubble('❌ GLTFLoader no disponible',3000); _buildParticleRobot(); return;
+    }
+    var _ldr=new THREE.GLTFLoader();
+    if(window._ROBOT_GLB){
+      /* Ruta preferida: datos embebidos en atom_robot_data.js (funciona con file://) */
+      _doParseGLB(_ldr);
+    } else {
+      /* Fallback: intentar cargar por XHR (funciona desde http://) */
+      _ldr.load('atom_robot.glb',_onGLTFLoaded,undefined,function(e){
+        console.warn('NEXO load error:',e);
+        onekBubble('⚠️ Falta atom_robot_data.js junto al HTML',4000);
+        _buildParticleRobot();
+      });
+    }
+  }
+
+  /* Ejecutar carga: si GLTFLoader ya está disponible úsalo, si no cargarlo dinámicamente */
+  if(typeof THREE.GLTFLoader!=='undefined'){
+    _doLoadGLB();
+  } else {
+    var _dynSc=document.createElement('script');
+    _dynSc.src='https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js';
+    _dynSc.onload=function(){ _doLoadGLB(); };
+    _dynSc.onerror=function(){ onekBubble('📡 Sin internet — robot clásico',3000); _buildParticleRobot(); };
+    document.head.appendChild(_dynSc);
+  }
+
+  /* Iniciar loop de render (funciona con stubs mientras el GLB carga) */
   animateOnek();
+  return; /* FIN initOnek con GLTF */
+
+  /* ═══════════════════════════════════════════════════════
+     FALLBACK: Robot de partículas (si GLB no carga)
+     ═══════════════════════════════════════════════════════ */
+  function _buildParticleRobot(){
+  /* Helpers partículas */
+  var W=0x99ddff,G=0xaaeeff,D=0x004466,V=0x1188ff;
+  function pts(arr,col,sz,op){
+    var geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(arr),3));
+    return new THREE.Points(geo,new THREE.PointsMaterial({
+      color:col,size:sz,transparent:true,opacity:op!==undefined?op:0.92,
+      blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true}));
+  }
+  function S(r,n,ox,oy,oz){var a=[],p=Math.PI*(3-Math.sqrt(5));ox=ox||0;oy=oy||0;oz=oz||0;for(var i=0;i<n;i++){var y=1-(i/(n-1))*2,rd=Math.sqrt(1-y*y),t=p*i;a.push(ox+r*rd*Math.cos(t),oy+r*y,oz+r*rd*Math.sin(t));}return a;}
+  function C(r1,r2,h,n,ox,oy,oz){var a=[];ox=ox||0;oy=oy||0;oz=oz||0;for(var i=0;i<n;i++){var t=i/n,r=r1+(r2-r1)*t,th=Math.random()*Math.PI*2;a.push(ox+r*Math.cos(th),oy-h/2+t*h,oz+r*Math.sin(th));}return a;}
+  function R(r,n,ox,oy,oz){var a=[];ox=ox||0;oy=oy||0;oz=oz||0;for(var i=0;i<n;i++){var t=(i/n)*Math.PI*2;a.push(ox+r*Math.cos(t),oy,oz+r*Math.sin(t));}return a;}
+  function B(w,h,d,n,ox,oy,oz){var a=[];ox=ox||0;oy=oy||0;oz=oz||0;for(var i=0;i<n;i++)a.push(ox+(Math.random()-.5)*w,oy+(Math.random()-.5)*h,oz+(Math.random()-.5)*d);return a;}
+  function lin(arr,col,op){var geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(arr),3));return new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color:col||D,transparent:true,opacity:op||0.40,blending:THREE.AdditiveBlending,depthWrite:false}));}
+
+  _onek.head=new THREE.Group(); _onek.head.position.y=1.24;
+  _onek.head.add(pts(S(0.36,180),W,0.036));
+  var vArr=[];for(var vi=0;vi<88;vi++){var vx=(Math.random()-.5)*0.56,vy=0.04+(Math.random()-.5)*0.10;vArr.push(vx,vy,0.32);}
+  _onek.visor=pts(vArr,V,0.072); _onek.head.add(_onek.visor);
+  _onek.antTop=pts([0,0.42,0],G,0.080); _onek.head.add(_onek.antTop);
+  _onek.root.add(_onek.head);
+  _onek.root.add(pts(C(0.50,0.47,0.30,200,0,0.66,0),W,0.038));
+  _onek.root.add(pts(C(0.47,0.40,0.34,180,0,0.37,0),W,0.036));
+  _onek.root.add(pts(C(0.28,0.26,0.18,80,0,0.12,0),D,0.032,0.65));
+  var chO=S(0.078,22,0,0.66,0.50);
+  _onek.chest=pts(chO,W,0.052); _onek.root.add(_onek.chest);
+  _onek.coreRing=pts(R(0.148,34,0,0.66,0.47),W,0.038); _onek.root.add(_onek.coreRing);
+  function mkArm(side){var g=new THREE.Group();g.position.set(side*0.62,0.68,0);g.rotation.z=side*0.10;g.add(pts(S(0.18,50,side*0.18,0.06,0),W,0.038));g.add(pts(C(0.105,0.088,0.60,85,0,-0.37,0),W,0.036));g.add(pts(C(0.085,0.066,0.54,70,0,-1.00,0),W,0.034));g.add(pts(B(0.11,0.24,0.07,35,0,-1.46,0),D,0.032,0.70));return g;}
+  _onek.armL=mkArm(-1); _onek.armR=mkArm(1); _onek.root.add(_onek.armL,_onek.armR);
+  function mkLeg(side){var g=new THREE.Group();g.position.set(side*0.21,-0.40,0);g.add(pts(C(0.148,0.118,0.64,108,0,-0.40,0),W,0.038));g.add(pts(C(0.105,0.078,0.64,100,0,-1.12,0),W,0.036));g.add(pts(B(0.22,0.075,0.38,38,0,-1.59,0.06),W,0.034,0.78));return g;}
+  _onek.legL=mkLeg(-1); _onek.legR=mkLeg(1); _onek.root.add(_onek.legL,_onek.legR);
+  } /* fin _buildParticleRobot */
+
+  /* código legado eliminado — GLTF reemplaza el robot de partículas */
 }
 
 /* Partículas flotantes de fondo */
@@ -4803,6 +4756,18 @@ function animateOnek(){
                 _onek.mood==='dance'  ? 0xcc44ff : 0x00d4ff;
   var moodPulse = 0.55 + Math.sin(t * (_onek.mood==='alert'?9:1.8)) * 0.45;
 
+  /* Emissive glow de mood en todos los materiales PBR del modelo GLTF */
+  if(_onek.meshList && _onek.meshList.length>0){
+    var _eInt=0.20+moodPulse*0.18;
+    for(var _mi=0;_mi<_onek.meshList.length;_mi++){
+      var _mm=_onek.meshList[_mi];
+      if(_mm.material && _mm.material.emissive){
+        _mm.material.emissive.setHex(moodCol);
+        _mm.material.emissiveIntensity=_eInt;
+      }
+    }
+  }
+
   /* Visera: cambia de color con el mood, pulsa */
   if(_onek.visor){
     _onek.visor.material.color.setHex(moodCol);
@@ -4836,7 +4801,8 @@ function animateOnek(){
   /* Luz puntual: tiñe todo el cuerpo con el color mood */
   if(_onek.coreLight){
     _onek.coreLight.color.setHex(moodCol);
-    _onek.coreLight.intensity = 2.5 + Math.sin(t*1.6)*1.0;
+    /* PBR responde más fuerte — rango 1.5-3.0 */
+    _onek.coreLight.intensity = 1.8 + Math.sin(t*1.6)*0.8;
   }
 
   /* Sensor cabeza: pulsa */
