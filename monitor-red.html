@@ -4390,189 +4390,318 @@ function initOnek(){
   var canvas=el('onekCanvas');
 
   /* Escena */
-  _onek.scene=new THREE.Scene();
-  _onek.scene.background=new THREE.Color(0x060a14);
-  _onek.scene.fog=new THREE.Fog(0x060a14,10,22);
+      _onek.scene=new THREE.Scene();
+  _onek.scene.background=new THREE.Color(0x010308);
+  _onek.scene.fog=new THREE.Fog(0x010308,16,34);
+  _onek.scene.add(new THREE.AmbientLight(0x000000,1));
 
-  /* Cámara */
-  _onek.cam=new THREE.PerspectiveCamera(42,160/190,0.1,50);
-  _onek.cam.position.set(0,0.6,5.8);
-  _onek.cam.lookAt(0,0.2,0);
+  _onek.cam=new THREE.PerspectiveCamera(44,160/190,0.1,50);
+  _onek.cam.position.set(0,0.05,5.8);
+  _onek.cam.lookAt(0,0.05,0);
 
-  /* Renderer */
   _onek.ren=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:false});
   _onek.ren.setSize(160,190);
   _onek.ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
-  _onek.ren.shadowMap.enabled=true;
-  _onek.ren.shadowMap.type=THREE.PCFSoftShadowMap;
 
-  /* Iluminacion dramatica */
-  _onek.scene.add(new THREE.AmbientLight(0x0a1628,4));
-  var key=new THREE.DirectionalLight(0x7eb8f7,5);
-  key.position.set(1.5,4,3.5); key.castShadow=true;
-  _onek.scene.add(key);
-  var rim=new THREE.DirectionalLight(0x00e5ff,3.5);
-  rim.position.set(-2,2,-3);
-  _onek.scene.add(rim);
-  var fill=new THREE.DirectionalLight(0x00ff88,1.2);
-  fill.position.set(0,-2,1);
-  _onek.scene.add(fill);
-  _onek.coreLight=new THREE.PointLight(0x00d4ff,3,4);
-  _onek.coreLight.position.set(0,-0.1,1.2);
+  _onek.coreLight=new THREE.PointLight(0x00aaff,4,8);
+  _onek.coreLight.position.set(0,0.4,2.0);
   _onek.scene.add(_onek.coreLight);
+  var rimBack=new THREE.PointLight(0x001a33,6,10);
+  rimBack.position.set(0,0,-3);
+  _onek.scene.add(rimBack);
 
-  /* Suelo */
-  var floorGeo=new THREE.PlaneGeometry(8,8);
-  var floorMat=new THREE.MeshPhongMaterial({color:0x060a14,shininess:80,specular:0x0a2040});
-  var floor=new THREE.Mesh(floorGeo,floorMat);
-  floor.rotation.x=-Math.PI/2; floor.position.y=-1.85; floor.receiveShadow=true;
-  _onek.scene.add(floor);
+  /* ══ HELPERS ══ */
+  /* Paneles blancos del Optimus → partículas cyan brillantes
+     Articulaciones negras → partículas azul oscuro           */
+  var W=0x99ddff;   /* "blanco" — panel */
+  var G=0xaaeeff;   /* glow nodo articulación */
+  var D=0x004466;   /* "negro" — joint oscuro */
+  var V=0x1188ff;   /* visera azul */
 
-  /* MATERIALES MODERNOS */
-  _onek.matBody =new THREE.MeshPhongMaterial({color:0x0d1f3c,shininess:180,specular:0x00aaff});
-  _onek.matPlate=new THREE.MeshPhongMaterial({color:0x162035,shininess:220,specular:0x38bdf8});
-  _onek.matRing =new THREE.MeshPhongMaterial({color:0x0a3d5c,shininess:160,specular:0x00d4ff});
-  _onek.matVisor=new THREE.MeshPhongMaterial({color:0x00d4ff,emissive:0x00a0cc,emissiveIntensity:0.9,shininess:300,transparent:true,opacity:0.92});
-  _onek.matCore =new THREE.MeshPhongMaterial({color:0xffffff,emissive:0x00d4ff,emissiveIntensity:1.2,shininess:400});
-  _onek.matAccent=new THREE.MeshPhongMaterial({color:0x00ff88,emissive:0x00cc66,emissiveIntensity:0.6,shininess:200});
-  _onek.matDark =new THREE.MeshPhongMaterial({color:0x080e1c,shininess:100,specular:0x0a2040});
-  _onek.matEye  =_onek.matCore;
-  _onek.eyeL=null; _onek.eyeR=null;
+  function pts(arr,col,sz,op){
+    var geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(arr),3));
+    return new THREE.Points(geo,new THREE.PointsMaterial({
+      color:col,size:sz,transparent:true,opacity:op!==undefined?op:0.92,
+      blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true}));
+  }
+  function lin(arr,col,op){
+    var geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(arr),3));
+    return new THREE.LineSegments(geo,new THREE.LineBasicMaterial({
+      color:col||D,transparent:true,opacity:op||0.40,
+      blending:THREE.AdditiveBlending,depthWrite:false}));
+  }
+  /* Esfera fibonacci */
+  function S(r,n,ox,oy,oz){
+    var a=[],p=Math.PI*(3-Math.sqrt(5));
+    ox=ox||0;oy=oy||0;oz=oz||0;
+    for(var i=0;i<n;i++){var y=1-(i/(n-1))*2,rd=Math.sqrt(1-y*y),t=p*i;a.push(ox+r*rd*Math.cos(t),oy+r*y,oz+r*rd*Math.sin(t));}
+    return a;
+  }
+  /* Cilindro — puede ser cónico */
+  function C(r1,r2,h,n,ox,oy,oz){
+    var a=[];ox=ox||0;oy=oy||0;oz=oz||0;
+    for(var i=0;i<n;i++){var t=i/n,r=r1+(r2-r1)*t,th=Math.random()*Math.PI*2;a.push(ox+r*Math.cos(th),oy-h/2+t*h,oz+r*Math.sin(th));}
+    return a;
+  }
+  /* Anillo */
+  function R(r,n,ox,oy,oz){
+    var a=[];ox=ox||0;oy=oy||0;oz=oz||0;
+    for(var i=0;i<n;i++){var t=(i/n)*Math.PI*2;a.push(ox+r*Math.cos(t),oy,oz+r*Math.sin(t));}
+    return a;
+  }
+  /* Scatter caja */
+  function B(w,h,d,n,ox,oy,oz){
+    var a=[];ox=ox||0;oy=oy||0;oz=oz||0;
+    for(var i=0;i<n;i++)a.push(ox+(Math.random()-.5)*w,oy+(Math.random()-.5)*h,oz+(Math.random()-.5)*d);
+    return a;
+  }
+  /* Panel plano (disco) */
+  function disc(r,n,ox,oy,oz){
+    var a=[];ox=ox||0;oy=oy||0;oz=oz||0;
+    for(var i=0;i<n;i++){var t=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random())*r;a.push(ox+rr*Math.cos(t),oy,oz+rr*Math.sin(t));}
+    return a;
+  }
+  /* Elipsoide — cabeza Optimus: más alta que ancha, ligeramente plana atrás */
+  function E(rx,ry,rz,n,ox,oy,oz){
+    var a=[],phi=Math.PI*(3-Math.sqrt(5));
+    ox=ox||0;oy=oy||0;oz=oz||0;
+    for(var i=0;i<n;i++){var y=1-(i/(n-1))*2,rd=Math.sqrt(1-y*y),t=phi*i;a.push(ox+rx*rd*Math.cos(t),oy+ry*y,oz+rz*rd*Math.sin(t));}
+    return a;
+  }
+  /* Pauldron — media elipsoide aplanada: forma de hombreras Optimus */
+  function PAD(rx,ry,rz,n,ox,oy,oz){
+    /* Solo la mitad superior de un elipsoide: crea una placa redondeada */
+    var a=[],phi=Math.PI*(3-Math.sqrt(5));
+    ox=ox||0;oy=oy||0;oz=oz||0;
+    for(var i=0;i<n;i++){
+      var y=i/(n-1);            /* 0→1: solo tapa superior */
+      var rd=Math.sqrt(1-y*y),t=phi*i*1.6;
+      a.push(ox+rx*rd*Math.cos(t),oy+ry*y,oz+rz*rd*Math.sin(t));
+    }
+    /* Borde inferior (anillo) que cierra la placa */
+    var nr=Math.floor(n*0.4);
+    for(var j=0;j<nr;j++){var t2=(j/nr)*Math.PI*2;a.push(ox+rx*Math.cos(t2),oy,oz+rz*Math.sin(t2));}
+    /* Relleno disco base */
+    var nd=Math.floor(n*0.25);
+    for(var k=0;k<nd;k++){var t3=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random());a.push(ox+rx*rr*Math.cos(t3),oy,oz+rz*rr*Math.sin(t3));}
+    return a;
+  }
 
-  buildOnekParticles();
-
-  /* ====== GEOMETRIA: ANDROIDE MODERNO ONEK NEO ====== */
   _onek.root=new THREE.Group();
 
-  /* CABEZA: casco oblato con visor holografico */
+  /* ══════════════════════════════════
+     CABEZA — casco negro redondeado
+     ══════════════════════════════════ */
   _onek.head=new THREE.Group();
-  _onek.head.position.y=1.08;
+  _onek.head.position.y=1.24;
 
-  var helmGeo=new THREE.SphereGeometry(0.44,20,14);
-  var helm=new THREE.Mesh(helmGeo,_onek.matPlate);
-  helm.scale.set(1.05,0.90,0.95); helm.castShadow=true;
-  _onek.head.add(helm);
+  /* Superficie exterior: elipsoide Optimus
+     rx=0.36 ancho, ry=0.44 alto, rz=0.33 prof. (más plana atrás) */
+  var HRX=0.36,HRY=0.44,HRZ=0.33;
+  var hS=E(HRX,HRY,HRZ,190);
+  _onek.head.add(pts(hS,W,0.036));
+  _onek.head.add(pts(hS,W,0.09,0.11)); /* glow */
+  _onek.head.add(pts(E(HRX*0.55,HRY*0.55,HRZ*0.55,55),D,0.028,0.40)); /* interior */
 
-  /* Planchas laterales */
-  [-1,1].forEach(function(s){
-    var panGeo=new THREE.CylinderGeometry(0.28,0.24,0.12,8);
-    var pan=new THREE.Mesh(panGeo,_onek.matBody);
-    pan.rotation.z=Math.PI/2; pan.position.set(s*0.44,0,0);
-    _onek.head.add(pan);
-  });
-
-  /* Visor holografico unico */
-  var visorGeo=new THREE.BoxGeometry(0.74,0.20,0.06);
-  _onek.visor=new THREE.Mesh(visorGeo,_onek.matVisor);
-  _onek.visor.position.set(0,0.05,0.38);
+  /* ── VISERA AMPLIA proyectada sobre el elipsoide ──
+     Proyección matemática exacta: cada punto cae en la superficie frontal */
+  var vArr=[];
+  for(var vi=0;vi<88;vi++){
+    var vx=(Math.random()-.5)*0.68;
+    var vy=0.05+(Math.random()-.5)*0.070;
+    var nx=vx/HRX, ny=vy/HRY;
+    var term=1-nx*nx-ny*ny;
+    var vz=HRZ*Math.sqrt(Math.max(0.04,term))*0.93;
+    vArr.push(vx,vy,vz);
+  }
+  _onek.visor=pts(vArr,V,0.072);
   _onek.head.add(_onek.visor);
+  _onek.head.add(pts(vArr,V,0.22,0.35)); /* glow amplio visera */
 
-  /* Linea acento bajo visor */
-  var vLineGeo=new THREE.BoxGeometry(0.60,0.03,0.05);
-  _onek.mouth=new THREE.Mesh(vLineGeo,_onek.matAccent);
-  _onek.mouth.position.set(0,-0.06,0.39);
-  _onek.head.add(_onek.mouth);
-
-  /* Halo superior flotante */
-  var haloGeo=new THREE.TorusGeometry(0.38,0.025,8,40);
-  _onek.halo=new THREE.Mesh(haloGeo,_onek.matCore);
-  _onek.halo.position.y=0.52; _onek.halo.rotation.x=Math.PI/2;
-  _onek.head.add(_onek.halo);
-
-  /* Borde inferior casco */
-  var chinGeo=new THREE.TorusGeometry(0.40,0.03,8,32);
-  var chin=new THREE.Mesh(chinGeo,_onek.matRing);
-  chin.position.set(0,-0.32,0); chin.rotation.x=Math.PI/2;
-  _onek.head.add(chin);
-
-  /* Sensor central (tercer ojo) */
-  var sensorGeo=new THREE.SphereGeometry(0.055,10,10);
-  _onek.antTop=new THREE.Mesh(sensorGeo,_onek.matCore);
-  _onek.antTop.position.set(0,0.35,0.36);
+  _onek.antTop=pts([0,0.24,0.32],G,0.080);
   _onek.head.add(_onek.antTop);
-
+  _onek.mouth=pts([0,0,0],D,0.01,0.01);
+  _onek.halo=null;
   _onek.root.add(_onek.head);
 
-  /* CUELLO */
-  var neck1=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.18,0.14,10),_onek.matDark);
-  neck1.position.y=0.72; _onek.root.add(neck1);
-  var neckRing=new THREE.Mesh(new THREE.TorusGeometry(0.17,0.025,6,24),_onek.matRing);
-  neckRing.position.y=0.72; neckRing.rotation.x=Math.PI/2; _onek.root.add(neckRing);
+  /* ══════════════════════════════════
+     CUELLO corto
+     ══════════════════════════════════ */
+  _onek.root.add(pts(C(0.10,0.13,0.18,22,0,0.90,0),D,0.030,0.55));
+  _onek.root.add(lin([0,0.99,0,0,0.81,0],D,0.60));
 
-  /* TORSO HEXAGONAL CONICO */
-  var torsoGeo=new THREE.CylinderGeometry(0.58,0.46,1.25,6);
-  var torso=new THREE.Mesh(torsoGeo,_onek.matBody);
-  torso.position.y=0.02; torso.castShadow=true; _onek.root.add(torso);
+  /* ══════════════════════════════════
+     TORSO — proporciones Optimus:
+     muy ancho en pecho, cintura mínima
+     ══════════════════════════════════ */
+  /* Pecho superior (el más amplio) */
+  var c1=C(0.50,0.47,0.30,200,0,0.66,0);
+  _onek.root.add(pts(c1,W,0.038));
+  _onek.root.add(pts(c1,W,0.10,0.10));
 
-  /* Planchas hombros */
-  [-1,1].forEach(function(s){
-    var shp=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.14,0.18,6),_onek.matPlate);
-    shp.position.set(s*0.60,0.48,0); shp.rotation.z=s*0.25; _onek.root.add(shp);
-  });
+  /* Panel frontal pecho — más denso y brillante */
+  _onek.root.add(pts(B(0.50,0.28,0.06,70,0,0.66,0.47),W,0.040,0.80));
+  _onek.root.add(pts(B(0.50,0.28,0.06,70,0,0.66,0.47),W,0.10,0.15));
 
-  /* Nucleo del pecho */
-  _onek.chest=new THREE.Mesh(new THREE.SphereGeometry(0.13,14,10),_onek.matCore);
-  _onek.chest.position.set(0,0.18,0.52); _onek.root.add(_onek.chest);
+  /* Pecho inferior */
+  var c2=C(0.47,0.40,0.34,180,0,0.37,0);
+  _onek.root.add(pts(c2,W,0.036));
+  _onek.root.add(pts(c2,W,0.09,0.09));
 
-  /* Anillo del nucleo */
-  _onek.coreRing=new THREE.Mesh(new THREE.TorusGeometry(0.20,0.028,8,32),_onek.matVisor);
-  _onek.coreRing.position.set(0,0.18,0.50); _onek.root.add(_onek.coreRing);
+  /* CINTURA ESTRECHA — diferencia dramática con el pecho */
+  var cw=C(0.28,0.26,0.18,80,0,0.12,0);
+  _onek.root.add(pts(cw,D,0.032,0.65));
 
-  /* Lineas de datos torso */
-  [0.04,-0.14,-0.30].forEach(function(y){
-    var dl=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.025,0.04),_onek.matAccent);
-    dl.position.set(0,y,0.46); _onek.root.add(dl);
-  });
+  /* ZONA MECÁNICA CENTRAL (pelvis expuesta oscura) */
+  var mp=C(0.28,0.30,0.32,110,0,-0.10,0);
+  _onek.root.add(pts(mp,D,0.032,0.60));
+  _onek.root.add(pts(R(0.27,32,0,-0.10,0),D,0.036,0.50));
+  _onek.root.add(pts(R(0.27,32,0, 0.06,0),D,0.034,0.45));
+  /* Detalle mecánico: barras verticales en pelvis */
+  for(var pi=-1;pi<=1;pi+=2){
+    _onek.root.add(lin([pi*0.22,0.06,0, pi*0.22,-0.28,0],D,0.45));
+    _onek.root.add(lin([pi*0.14,0.06,0, pi*0.14,-0.28,0],D,0.35));
+  }
 
-  /* Anillo cintura */
-  var waistRing=new THREE.Mesh(new THREE.TorusGeometry(0.47,0.035,8,32),_onek.matRing);
-  waistRing.position.y=-0.60; waistRing.rotation.x=Math.PI/2; _onek.root.add(waistRing);
+  /* Pelvis inferior */
+  _onek.root.add(pts(C(0.30,0.25,0.14,60,0,-0.32,0),D,0.030,0.55));
 
-  /* Cintura */
-  var waist=new THREE.Mesh(new THREE.CylinderGeometry(0.40,0.36,0.16,6),_onek.matDark);
-  waist.position.y=-0.70; _onek.root.add(waist);
+  /* Columna vertebral + estructura */
+  _onek.root.add(lin([
+    0, 0.82,0,  0,-0.40,0,          /* columna */
+   -0.50,0.78,0, 0.50,0.78,0,       /* barra hombros */
+   -0.24,-0.38,0, 0.24,-0.38,0,     /* barra caderas */
+   -0.46,0.78,0, 0.24,-0.38,0,      /* diagonal */
+    0.46,0.78,0,-0.24,-0.38,0
+  ],D,0.30));
 
-  /* BRAZOS */
-  function makeArm(side){
+  /* NÚCLEO pecho (mood) */
+  var chO=S(0.078,22,0,0.66,0.50);
+  _onek.chest=pts(chO,W,0.052);
+  _onek.root.add(_onek.chest);
+  _onek.root.add(pts(chO,W,0.15,0.22));
+  _onek.coreRing=pts(R(0.148,34,0,0.66,0.47),W,0.038);
+  _onek.root.add(_onek.coreRing);
+
+  /* ══════════════════════════════════
+     HOMBROS — enormes caps redondeados
+     Pivote en articulación, no en cap
+     ══════════════════════════════════ */
+  function mkArm(side){
     var g=new THREE.Group();
-    g.position.set(side*0.74,0.22,0);
-    var shRing=new THREE.Mesh(new THREE.TorusGeometry(0.14,0.035,8,24),_onek.matRing);
-    shRing.rotation.z=Math.PI/2; g.add(shRing);
-    var up=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.10,0.52,10),_onek.matPlate);
-    up.position.y=-0.28; g.add(up);
-    var el2=new THREE.Mesh(new THREE.TorusGeometry(0.10,0.028,6,20),_onek.matRing);
-    el2.position.y=-0.58; el2.rotation.z=Math.PI/2; g.add(el2);
-    var lo=new THREE.Mesh(new THREE.CylinderGeometry(0.10,0.075,0.44,10),_onek.matBody);
-    lo.position.y=-0.84; g.add(lo);
-    var wr=new THREE.Mesh(new THREE.TorusGeometry(0.082,0.022,6,18),_onek.matAccent);
-    wr.position.y=-1.08; wr.rotation.z=Math.PI/2; g.add(wr);
-    var hand=new THREE.Mesh(new THREE.CylinderGeometry(0.095,0.085,0.18,8),_onek.matDark);
-    hand.position.y=-1.22; hand.rotation.z=Math.PI/2; g.add(hand);
+    /* Pivote en la articulación del hombro */
+    g.position.set(side*0.62, 0.68, 0);
+    /* Leve inclinación natural: brazo cae con pequeño ángulo */
+    g.rotation.z = side * 0.10;   /* separado del torso */
+    g.rotation.x = 0.08;          /* ligeramente adelante */
+
+    /* PAULDRON HOMBRO — media elipsoide aplanada, estilo Optimus
+       rx ancho lateral, ry altura (plana), rz profundidad front-back */
+    var pOx=side*0.18, pOy=0.06;
+    var padArr=PAD(0.30,0.16,0.24,90,pOx,pOy,0);
+    g.add(pts(padArr,W,0.040));
+    g.add(pts(padArr,W,0.11,0.14)); /* glow */
+    /* Borde frontal del hombro más brillante */
+    g.add(pts(PAD(0.28,0.12,0.20,40,pOx,pOy,0),W,0.038,0.70));
+
+    /* Articulación hombro (nodo oscuro bajo la placa) */
+    g.add(pts(S(0.085,24),G,0.048));
+    g.add(pts(S(0.085,24),G,0.13,0.18));
+
+    /* BRAZO SUPERIOR largo */
+    var uA=C(0.105,0.088,0.60,85,0,-0.37,0);
+    g.add(pts(uA,W,0.036));
+    g.add(pts(uA,W,0.09,0.10));
+
+    /* CODO: nodo prominente oscuro */
+    g.add(pts(S(0.076,24,0,-0.70,0),G,0.050));
+    g.add(pts(S(0.076,24,0,-0.70,0),G,0.14,0.18));
+    g.add(pts(R(0.076,18,0,-0.70,0),D,0.036,0.50));
+
+    /* ANTEBRAZO largo */
+    var lA=C(0.085,0.066,0.54,70,0,-1.00,0);
+    g.add(pts(lA,W,0.034));
+
+    /* MUÑECA */
+    g.add(pts(R(0.062,16,0,-1.30,0),D,0.036,0.55));
+
+    /* MANO mecánica — cluster oscuro compacto */
+    g.add(pts(B(0.11,0.24,0.07,35,0,-1.46,0),D,0.032,0.70));
+    /* 4 dedos como líneas */
+    var fd=side<0?[-0.040,-0.013,0.013,0.040]:[0.040,0.013,-0.013,-0.040];
+    for(var fi=0;fi<4;fi++) g.add(lin([fd[fi],-1.33,0, fd[fi],-1.60,0],D,0.55));
+
+    /* Líneas esqueleto brazo */
+    g.add(lin([
+      0,0,0,       0,-0.70,0,
+      0,-0.70,0,   0,-1.30,0,
+      0,-1.30,0,   0,-1.58,0
+    ],D,0.42));
+
     return g;
   }
-  _onek.armL=makeArm(-1); _onek.armR=makeArm(1);
+  _onek.armL=mkArm(-1);
+  _onek.armR=mkArm(1);
   _onek.root.add(_onek.armL,_onek.armR);
 
-  /* PIERNAS */
-  function makeLeg(side){
+  /* ══════════════════════════════════
+     PIERNAS — largas y delgadas
+     Posición pie ancho (Optimus stance)
+     ══════════════════════════════════ */
+  function mkLeg(side){
     var g=new THREE.Group();
-    g.position.set(side*0.24,-0.88,0);
-    var th=new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.13,0.52,10),_onek.matPlate);
-    th.position.y=-0.26; th.castShadow=true; g.add(th);
-    var kn=new THREE.Mesh(new THREE.TorusGeometry(0.13,0.032,8,20),_onek.matRing);
-    kn.position.y=-0.56; kn.rotation.x=Math.PI/2; g.add(kn);
-    var ca=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.10,0.46,10),_onek.matBody);
-    ca.position.y=-0.84; g.add(ca);
-    var ank=new THREE.Mesh(new THREE.TorusGeometry(0.10,0.022,6,18),_onek.matAccent);
-    ank.position.y=-1.10; ank.rotation.x=Math.PI/2; g.add(ank);
-    var foot=new THREE.Mesh(new THREE.CylinderGeometry(0.10,0.12,0.10,6),_onek.matDark);
-    foot.position.set(0,-1.20,0.06); g.add(foot);
+    g.position.set(side*0.21,-0.40,0);
+    g.rotation.z=side*0.03; /* leve abertura */
+
+    /* CADERA (articulación) */
+    g.add(pts(S(0.090,26),G,0.050));
+    g.add(pts(S(0.090,26),G,0.14,0.18));
+
+    /* MUSLO largo y ovalado */
+    var thA=C(0.148,0.118,0.64,108,0,-0.40,0);
+    g.add(pts(thA,W,0.038));
+    g.add(pts(thA,W,0.095,0.09));
+    /* Panel frontal muslo */
+    g.add(pts(B(0.18,0.52,0.04,40,0,-0.40,0.12),W,0.036,0.65));
+
+    /* RODILLA: nodo muy prominente, mecanismo visible */
+    g.add(pts(S(0.088,26,0,-0.76,0),G,0.052));
+    g.add(pts(S(0.088,26,0,-0.76,0),G,0.15,0.20));
+    g.add(pts(R(0.086,20,0,-0.76,0),D,0.038,0.55));
+    /* Detalle: "cap" rodilla lateral */
+    g.add(pts(disc(0.07,16,side*0.09,-0.76,0),G,0.040,0.55));
+
+    /* PANTORRILLA larga y delgada */
+    var shA=C(0.105,0.078,0.64,100,0,-1.12,0);
+    g.add(pts(shA,W,0.036));
+    /* Panel frontal pantorrilla */
+    g.add(pts(B(0.14,0.52,0.04,35,0,-1.12,0.10),W,0.034,0.60));
+
+    /* TOBILLO */
+    g.add(pts(S(0.056,16,0,-1.48,0),D,0.042));
+    g.add(pts(R(0.056,14,0,-1.48,0),D,0.034,0.50));
+
+    /* PIE: plataforma ancha y plana — característica del Optimus */
+    g.add(pts(B(0.22,0.075,0.38,38,0,-1.59,0.06),W,0.034,0.78));
+    g.add(pts(B(0.22,0.04, 0.38,20,0,-1.65,0.06),D,0.030,0.55));
+
+    /* Líneas esqueleto pierna */
+    g.add(lin([
+      0, 0,0,      0,-0.76,0,
+      0,-0.76,0,   0,-1.48,0,
+      0,-1.48,0,   0,-1.65,0
+    ],D,0.44));
+
     return g;
   }
-  _onek.legL=makeLeg(-1); _onek.legR=makeLeg(1);
+  _onek.legL=mkLeg(-1);
+  _onek.legR=mkLeg(1);
   _onek.root.add(_onek.legL,_onek.legR);
 
-  _onek.root.position.y=-0.15;
+  buildOnekParticles();
+  _onek.root.position.y=0.10;
   _onek.scene.add(_onek.root);
 
   /* Iniciar el loop de renderizado */
@@ -4667,70 +4796,57 @@ function animateOnek(){
     _onek.head.rotation.z=Math.sin(_onek.danceT*2.5)*0.2;
   }
 
-  /* ── Color dinámico según mood ── */
+  /* ── Color mood: cyan base → verde/rojo/naranja/morado según estado ── */
   var moodCol = _onek.mood==='happy'  ? 0x00ff88 :
-                _onek.mood==='alert'  ? 0xff3333 :
+                _onek.mood==='alert'  ? 0xff2222 :
                 _onek.mood==='worried'? 0xffaa00 :
-                _onek.mood==='dance'  ? 0xdd44ff : 0x00d4ff;
-  var moodPulse = 0.7 + Math.sin(t * (_onek.mood==='alert'?8:2)) * 0.3;
+                _onek.mood==='dance'  ? 0xcc44ff : 0x00d4ff;
+  var moodPulse = 0.55 + Math.sin(t * (_onek.mood==='alert'?9:1.8)) * 0.45;
 
-  /* Visor holográfico: pulsa con el mood */
+  /* Visera: cambia de color con el mood, pulsa */
   if(_onek.visor){
     _onek.visor.material.color.setHex(moodCol);
-    _onek.visor.material.emissive.setHex(moodCol);
-    _onek.visor.material.emissiveIntensity = moodPulse * 0.9;
-    /* Efecto scan: el visor se desplaza levemente */
-    _onek.visor.position.y = 0.05 + Math.sin(t*3)*0.005;
+    /* PointsMaterial no tiene emissive — el color con AdditiveBlending es el glow */
+    var vSz = 0.055 + moodPulse * 0.03;
+    _onek.visor.material.size = vSz;
+    _onek.visor.position.y = Math.sin(t*2.8)*0.004; /* scan sutil */
   }
 
-  /* Halo superior: rota y pulsa */
+  /* Halo: siempre null en diseño IA, check seguridad */
   if(_onek.halo){
-    _onek.halo.rotation.z = t * (_onek.mood==='dance'?1.5:0.5);
+    _onek.halo.rotation.z = t * 0.8;
     _onek.halo.material.color.setHex(moodCol);
-    _onek.halo.material.emissive.setHex(moodCol);
-    _onek.halo.material.emissiveIntensity = 0.8 + Math.sin(t*2.5)*0.2;
-    _onek.halo.scale.setScalar(1 + Math.sin(t*1.8)*0.04);
   }
 
-  /* Núcleo del pecho: pulso cardíaco */
+  /* Núcleo pecho: pulso cardíaco */
   if(_onek.chest){
-    var heartPulse = 1 + Math.abs(Math.sin(t*(_onek.mood==='alert'?4:1.4)))*0.25;
+    var heartPulse = 1 + Math.abs(Math.sin(t*(_onek.mood==='alert'?4:1.3)))*0.22;
     _onek.chest.scale.setScalar(heartPulse);
     _onek.chest.material.color.setHex(moodCol);
-    _onek.chest.material.emissive.setHex(moodCol);
-    _onek.chest.material.emissiveIntensity = moodPulse * 1.2;
+    _onek.chest.material.size = 0.048 + moodPulse * 0.025;
   }
 
-  /* Anillo del núcleo: contra-rotación */
+  /* Anillo core: gira y cambia color */
   if(_onek.coreRing){
-    _onek.coreRing.rotation.z = -t*0.8;
-    _onek.coreRing.rotation.x =  t*0.3;
+    _onek.coreRing.rotation.z = -t * 0.9;
+    _onek.coreRing.rotation.x =  t * 0.35;
     _onek.coreRing.material.color.setHex(moodCol);
-    _onek.coreRing.material.emissive.setHex(moodCol);
-    _onek.coreRing.material.emissiveIntensity = moodPulse * 0.7;
   }
 
-  /* Luz puntual del pecho */
+  /* Luz puntual: tiñe todo el cuerpo con el color mood */
   if(_onek.coreLight){
     _onek.coreLight.color.setHex(moodCol);
-    _onek.coreLight.intensity = 2 + Math.sin(t*1.4)*0.8;
+    _onek.coreLight.intensity = 2.5 + Math.sin(t*1.6)*1.0;
   }
 
-  /* Sensor frontal (antTop): pulsa */
+  /* Sensor cabeza: pulsa */
   if(_onek.antTop){
     _onek.antTop.material.color.setHex(moodCol);
-    _onek.antTop.material.emissive.setHex(moodCol);
-    _onek.antTop.material.emissiveIntensity = moodPulse;
-    _onek.antTop.scale.setScalar(1 + Math.sin(t*(_onek.mood==='alert'?6:1.5))*0.2);
+    _onek.antTop.material.size = 0.07 + Math.sin(t*(_onek.mood==='alert'?7:1.6))*0.03;
   }
 
-  /* Flotación base ajustada */
-  _onek.root.position.y = -0.15 + Math.sin(t * (_onek.mood==='happy'?1.6:1.0)) * floatAmp;
-
-  /* Pantalla pecho — color según estado (alias para compatibilidad) */
-  if(_onek.chest){
-    /* ya animado arriba */
-  }
+  /* Flotación base */
+  _onek.root.position.y = -0.10 + Math.sin(t * (_onek.mood==='happy'?1.6:1.0)) * floatAmp;
 
   _onek.ren.render(_onek.scene,_onek.cam);
 }
