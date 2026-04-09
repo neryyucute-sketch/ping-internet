@@ -268,11 +268,45 @@
     #onekCard:hover{box-shadow:0 12px 40px rgba(59,130,246,.25)}
     #onekBar{display:flex;justify-content:space-between;align-items:center;
       padding:5px 10px;background:#1e293b;border-bottom:1px solid #1a2640}
-    #onekName{font-size:.65rem;font-weight:700;letter-spacing:.1em;color:#64748b}
+    #onekName{font-size:.65rem;font-weight:700;letter-spacing:.1em;color:#64748b;
+      cursor:pointer;transition:color .2s}
+    #onekName:hover{color:#38bdf8}
     #onekStatus{font-size:.62rem;color:#475569}
     #onekMin{background:none;border:none;color:#475569;cursor:pointer;
       font-size:.9rem;line-height:1;padding:0 2px}
     #onekMin:hover{color:var(--t)}
+    /* ── Name Picker Modal ── */
+    #robotNameModal{display:none;position:fixed;inset:0;z-index:1300;
+      background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
+      align-items:flex-end;justify-content:flex-end;padding:18px}
+    #robotNameModal.show{display:flex}
+    #robotNameCard{background:#0f172a;border:1px solid #1e3a5f;border-radius:18px;
+      padding:18px 20px 16px;width:220px;box-shadow:0 12px 40px rgba(0,0,0,.6);
+      animation:slideUp .25s ease}
+    @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .rnm-title{font-size:.72rem;font-weight:700;color:#94a3b8;
+      letter-spacing:.08em;margin-bottom:12px;text-align:center}
+    .rnm-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+    .rnm-opt{background:#1e293b;border:1.5px solid #334155;border-radius:10px;
+      padding:8px 6px;cursor:pointer;text-align:center;transition:all .18s}
+    .rnm-opt:hover{border-color:#38bdf8;background:#1a3050}
+    .rnm-opt.selected{border-color:#38bdf8;background:#0c2040}
+    .rnm-opt-icon{font-size:1.15rem;display:block;margin-bottom:2px}
+    .rnm-opt-name{font-size:.62rem;font-weight:700;color:#e2e8f0;letter-spacing:.06em}
+    .rnm-opt-tag{font-size:.50rem;color:#64748b;margin-top:1px}
+    .rnm-custom{display:flex;gap:6px;margin-top:4px}
+    .rnm-input{flex:1;background:#1e293b;border:1.5px solid #334155;border-radius:8px;
+      padding:5px 8px;color:#e2e8f0;font-size:.65rem;outline:none;
+      font-family:inherit;letter-spacing:.05em}
+    .rnm-input:focus{border-color:#38bdf8}
+    .rnm-input::placeholder{color:#475569}
+    .rnm-save{background:#0ea5e9;border:none;border-radius:8px;padding:5px 10px;
+      color:#fff;font-size:.62rem;font-weight:700;cursor:pointer;transition:background .18s}
+    .rnm-save:hover{background:#38bdf8}
+    .rnm-close{background:none;border:none;color:#475569;font-size:.7rem;
+      cursor:pointer;display:block;text-align:center;margin-top:8px;
+      width:100%;padding:2px}
+    .rnm-close:hover{color:#94a3b8}
     #onekCanvas{display:block}
     #onekFoot{display:flex;justify-content:center;align-items:center;gap:6px;
       padding:4px 10px;background:#1e293b;border-top:1px solid #1a2640}
@@ -796,14 +830,29 @@
   <div class="log" id="log"><div class="le info">— Log de actividad —</div></div>
 </div>
 
+<!-- ═══════════ NAME PICKER MODAL ═══════════ -->
+<div id="robotNameModal">
+  <div id="robotNameCard">
+    <div class="rnm-title">✏️ ELIGE MI NOMBRE</div>
+    <div class="rnm-grid" id="rnmGrid">
+      <!-- generado por JS -->
+    </div>
+    <div class="rnm-custom">
+      <input class="rnm-input" id="rnmCustomInput" maxlength="10" placeholder="nombre propio…"/>
+      <button class="rnm-save" onclick="saveRobotName()">OK</button>
+    </div>
+    <button class="rnm-close" onclick="closeNamePicker()">cancelar</button>
+  </div>
+</div>
+
 <!-- ═══════════ ROBOT ONEK ═══════════ -->
 <div id="onekWrap">
   <div id="onekBubble"></div>
   <div id="onekCard" onclick="onekClick()">
     <div id="onekBar">
-      <span id="onekName">⚡ NEXO</span>
+      <span id="onekName" onclick="event.stopPropagation();openNamePicker()" title="Clic para cambiar mi nombre">⚡ NEXO</span>
       <span id="onekStatus">en espera</span>
-      <button id="onekWakeBtn" onclick="event.stopPropagation();toggleWakeWord()" title="Activar escucha continua — di 'NEXO' para llamarme">👂</button>
+      <button id="onekWakeBtn" onclick="event.stopPropagation();toggleWakeWord()" title="Activar escucha continua">👂</button>
       <button id="onekChatToggle" onclick="event.stopPropagation();toggleOnekChat()" title="Chat">💬</button>
       <button id="onekMin" onclick="event.stopPropagation();toggleOnek()" title="Minimizar">−</button>
     </div>
@@ -4183,6 +4232,10 @@ var INTENTS=[
   { keys:['saluda','di hola','levanta la mano','wave','saluda a todos'],
     fn: function(){ if(!_onek.waving&&_onek.mood!=='dance'){ _onek.waving=true; _onek.waveT=0; } return ['¡Holaaa! 👋','¡Saludos a todos! ¡Aquí NEXO! 👋','¡Hey! 👋 ¿Cómo están?'][Math.floor(Math.random()*3)]; }},
 
+  /* ── CAMBIAR NOMBRE ── */
+  { keys:['cambia tu nombre','cambiar nombre','elige otro nombre','quiero llamarte','pon otro nombre','renombrate','como me llamo','cual es tu nombre aqui','nombre','otro nombre'],
+    fn: function(){ setTimeout(openNamePicker, 200); return 'Abriendo el selector de nombre 🏷️\nElige el que prefieras para este dispositivo — cada computadora puede tener el suyo.'; }},
+
   /* ── CÓMO TE PUEDES MOVER ── */
   { keys:['como puedes moverte','que movimientos sabes','que animaciones tienes','que trucos sabes','que puedes hacer fisicamente','habilidades fisicas','que sabe hacer tu cuerpo','muevete','movimientos'],
     fn: function(){
@@ -4332,7 +4385,8 @@ function intentRecommend(){
 /* ── Saludo inicial al abrir chat ── */
 function onekGreet(){
   var n=today.length;
-  var msg=n>0?'¡Hola! Ya tengo '+n+' mediciones de hoy.\nPregúntame sobre tu conexión, ping, historial o SLA 📊':'¡Hola! Soy NEXO 👋\nEl monitor no está activo todavía.\nPregúntame algo o escribe "ayuda" para ver qué puedo hacer.';
+  var _rn=(_robotName&&_robotName.display)||'NEXO';
+  var msg=n>0?'¡Hola! Soy '+_rn+' y ya tengo '+n+' mediciones de hoy.\nPregúntame sobre tu conexión, ping, historial o SLA 📊':'¡Hola! Soy '+_rn+' 👋\nEl monitor no está activo todavía.\nPregúntame algo o escribe "ayuda" para ver qué puedo hacer.';
   setTimeout(function(){ addOnekMsg(msg,'bot'); },200);
 }
 
@@ -4340,6 +4394,156 @@ function onekGreet(){
    SISTEMA DE VOZ UNIFICADO — Una sola SpeechRecognition para
    wake word "NEXO" Y comandos. Elimina el conflicto de permisos.
    ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   SISTEMA DE NOMBRE DE ROBOT — personalizable por dispositivo
+   Cada navegador/PC guarda su nombre en localStorage.
+   ══════════════════════════════════════════════════════════════ */
+
+var ROBOT_NAMES = [
+  { id:'nexo',  icon:'⚡', name:'NEXO',  tag:'el original',   phonetic:['nexo','nex','nejo','nexus','neco','nexto'] },
+  { id:'aria',  icon:'🌟', name:'ARIA',  tag:'la elegante',   phonetic:['aria','ara','arya','aria.','arias','¡aria'] },
+  { id:'bolt',  icon:'🔥', name:'BOLT',  tag:'el veloz',      phonetic:['bolt','bol','bolta','bolts','volt','volts'] },
+  { id:'zara',  icon:'💜', name:'ZARA',  tag:'la precisa',    phonetic:['zara','sara','tzara','zar','zarah','¡zara'] },
+  { id:'max',   icon:'🤖', name:'MAX',   tag:'el clásico',    phonetic:['max','maks','macs','mex','max.','¡max'] },
+  { id:'pixel', icon:'🎮', name:'PIXEL', tag:'el geek',       phonetic:['pixel','pixe','pixiel','pixels','pixal'] }
+];
+
+var _robotName = {
+  id      : 'nexo',
+  display : 'NEXO',
+  phonetic: ROBOT_NAMES[0].phonetic
+};
+
+/* ── Leer nombre guardado en este dispositivo ── */
+function loadRobotName(){
+  try{
+    var saved = localStorage.getItem('nexo_robot_name');
+    if(saved){
+      var parsed = JSON.parse(saved);
+      /* Puede ser preset o nombre personalizado */
+      var preset = ROBOT_NAMES.filter(function(n){ return n.id===parsed.id; })[0];
+      if(preset){
+        _robotName = { id:preset.id, display:preset.name, phonetic:preset.phonetic };
+      } else if(parsed.custom){
+        /* Nombre libre: construir fonética básica */
+        _robotName = { id:'custom', display:parsed.custom.toUpperCase(), phonetic:_buildPhonetic(parsed.custom) };
+      }
+    }
+  }catch(e){}
+  applyRobotName();
+}
+
+/* Generar variaciones fonéticas simples para nombre personalizado */
+function _buildPhonetic(name){
+  var n = name.toLowerCase().trim();
+  var out = [n, n+'!', '¡'+n, n+'.'];
+  /* Agregar versión sin última vocal si termina en vocal */
+  if('aeiou'.indexOf(n[n.length-1])!==-1) out.push(n.slice(0,-1));
+  return out;
+}
+
+/* ── Aplicar nombre al UI y al sistema de wake word ── */
+function applyRobotName(){
+  /* Header */
+  var icon = '';
+  var preset = ROBOT_NAMES.filter(function(n){ return n.id===_robotName.id; })[0];
+  icon = preset ? preset.icon+' ' : '⚡ ';
+  el('onekName').textContent = icon + _robotName.display;
+  el('onekName').title = 'Clic para cambiar mi nombre — soy '+_robotName.display+' en este dispositivo';
+  /* Placeholder del input de chat */
+  var inp = el('onekInput');
+  if(inp) inp.placeholder = 'Pregúntame algo a '+_robotName.display+'…';
+  /* Input de hablar */
+  var vb = el('onekVoiceBtn');
+  if(vb) vb.title = 'Hablar con '+_robotName.display;
+  /* wakeStatus */
+  var ws = el('wakeStatus');
+  if(ws) ws.textContent = 'Escuchando "'+_robotName.display+'"…';
+  /* Wake word btn title */
+  var wb = el('onekWakeBtn');
+  if(wb) wb.title = 'Activar escucha continua — di "'+_robotName.display+'" para llamarme';
+  /* Actualizar WAKE_KEYWORDS con la fonética del nombre actual */
+  rebuildWakeKeywords();
+}
+
+/* ── Reconstruir WAKE_KEYWORDS con el nombre actual ── */
+function rebuildWakeKeywords(){
+  WAKE_KEYWORDS = _robotName.phonetic.slice(); /* copia de la fonética del nombre */
+  /* Siempre incluir "nexo" como fallback por si acaso */
+  if(_robotName.id !== 'nexo'){
+    WAKE_KEYWORDS.push('nexo','nex');
+  }
+}
+
+/* ── Guardar nombre elegido ── */
+function saveRobotName(){
+  var custom = el('rnmCustomInput').value.trim();
+  var selectedId = document.querySelector('.rnm-opt.selected');
+  var id = selectedId ? selectedId.dataset.id : null;
+
+  if(custom && custom.length>=2){
+    /* Nombre libre */
+    _robotName = { id:'custom', display:custom.toUpperCase(), phonetic:_buildPhonetic(custom) };
+    try{ localStorage.setItem('nexo_robot_name', JSON.stringify({custom:custom})); }catch(e){}
+  } else if(id){
+    var preset = ROBOT_NAMES.filter(function(n){ return n.id===id; })[0];
+    if(preset){
+      _robotName = { id:preset.id, display:preset.name, phonetic:preset.phonetic };
+      try{ localStorage.setItem('nexo_robot_name', JSON.stringify({id:preset.id})); }catch(e){}
+    }
+  } else {
+    closeNamePicker(); return;
+  }
+
+  applyRobotName();
+  closeNamePicker();
+  var bubble = '¡Hola! Ahora me llamo '+_robotName.display+' en este dispositivo 👋\nDi "'+_robotName.display+'" para llamarme.';
+  onekBubble(bubble, 4500);
+  speakOnek('¡Listo! Ahora me puedes llamar '+_robotName.display);
+}
+
+/* ── Abrir / cerrar el picker ── */
+function openNamePicker(){
+  /* Renderizar las opciones */
+  var grid = el('rnmGrid');
+  grid.innerHTML = '';
+  ROBOT_NAMES.forEach(function(n){
+    var div = document.createElement('div');
+    div.className = 'rnm-opt' + (_robotName.id===n.id?' selected':'');
+    div.dataset.id = n.id;
+    div.innerHTML = '<span class="rnm-opt-icon">'+n.icon+'</span>'
+      +'<div class="rnm-opt-name">'+n.name+'</div>'
+      +'<div class="rnm-opt-tag">'+n.tag+'</div>';
+    div.onclick = function(){
+      document.querySelectorAll('.rnm-opt').forEach(function(o){ o.classList.remove('selected'); });
+      div.classList.add('selected');
+      el('rnmCustomInput').value = '';
+    };
+    grid.appendChild(div);
+  });
+  el('rnmCustomInput').value = '';
+  el('robotNameModal').classList.add('show');
+}
+
+function closeNamePicker(){
+  el('robotNameModal').classList.remove('show');
+}
+
+/* Cerrar al clic en fondo */
+el('robotNameModal').addEventListener('click', function(e){
+  if(e.target===el('robotNameModal')) closeNamePicker();
+});
+
+/* ── Mostrar picker la primera vez (si no hay nombre guardado) ── */
+function checkFirstRun(){
+  try{
+    if(!localStorage.getItem('nexo_robot_name')){
+      /* Esperar a que el robot esté listo */
+      setTimeout(openNamePicker, 1800);
+    }
+  }catch(e){}
+}
+
 var _wake = {
   enabled   : false,
   restarting: false,
@@ -4371,18 +4575,20 @@ function wakeNorm(s){
 
 function wakeMatches(transcript){
   var t = wakeNorm(transcript);
-  /* 1. Coincidencia exacta de substring */
+  /* 1. Coincidencia exacta de substring contra todos los keywords */
   if(WAKE_KEYWORDS.some(function(kw){ return t.indexOf(wakeNorm(kw)) !== -1; })) return true;
-  /* 2. Fuzzy — cualquier palabra del transcript a ≤1 error de "nexo" */
+  /* 2. Fuzzy — cualquier palabra del transcript a ≤1 error del nombre actual */
+  var targetName = wakeNorm(_robotName.display);
   var words=t.split(/\s+/);
   return words.some(function(w){
-    if(w.length<3||w.length>6) return false;
-    var a=w,b='nexo',m=a.length,n=b.length,dp=[],i,j;
+    if(w.length<2||w.length>targetName.length+2) return false;
+    var a=w,b=targetName,m=a.length,n=b.length,dp=[],i,j;
     for(i=0;i<=m;i++){dp[i]=[i];for(j=1;j<=n;j++) dp[i][j]=0;}
     for(j=0;j<=n;j++) dp[0][j]=j;
     for(i=1;i<=m;i++) for(j=1;j<=n;j++)
       dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
-    return dp[m][n]<=1;
+    var thresh = targetName.length<=3 ? 1 : 2;
+    return dp[m][n]<=thresh;
   });
 }
 
@@ -4558,7 +4764,7 @@ function toggleWakeWord(){
     /* Una sola llamada a wakeStart — SpeechRecognition pide el mic
        una única vez y lo mantiene; no hay getUserMedia separado */
     wakeStart();
-    onekBubble('¡Listo! Di "NEXO" para llamarme 🎙️', 3000);
+    onekBubble('¡Listo! Di "'+_robotName.display+'" para llamarme 🎙️', 3000);
   }
 }
 
@@ -4570,7 +4776,7 @@ function updateWakeUI(){
     btn.textContent = '👂';
   } else {
     btn.classList.remove('wake-on');
-    btn.title = 'Activar escucha continua — di "NEXO" para llamarme';
+    btn.title = 'Activar escucha continua — di "'+(_robotName?_robotName.display:'NEXO')+'" para llamarme';
     btn.textContent = '👂';
     el('wakeIndicator').classList.remove('active');
   }
@@ -4807,6 +5013,10 @@ function initOnek(){
   /* Mostrar versión en el footer */
   var _verEl = el('onekVerBadge');
   if(_verEl) _verEl.textContent = 'v' + (APP_VERSION||'2.1');
+
+  /* Cargar nombre guardado (o mostrar picker si es la primera vez) */
+  loadRobotName();
+  checkFirstRun();
 
   if(typeof THREE==='undefined'){
     el('onekWrap').style.display='none'; return;
