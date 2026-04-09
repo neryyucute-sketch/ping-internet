@@ -254,7 +254,7 @@
     #onekCard.wake-detected{animation:wakeFlash .6s ease-out;}
 
 
-    #onekWrap{position:fixed;bottom:18px;right:18px;z-index:800;
+    #onekWrap{position:fixed;bottom:18px;right:18px;z-index:960;
       display:flex;flex-direction:column;align-items:flex-end;gap:6px;
       user-select:none}
     #onekBubble{background:#1e293b;border:1px solid #334155;border-radius:12px 12px 4px 12px;
@@ -3690,7 +3690,41 @@ function onekRespond(text){
 }
 
 /* ── Motor de intenciones ── */
-function norm(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function norm(s){
+  return s.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')          /* quitar tildes */
+    .replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]|[\u2600-\u27FF]|\uFE0F/g,'') /* quitar emojis */
+    .replace(/[¿?¡!.,;:]/g,' ')              /* quitar puntuación */
+    .replace(/\s+/g,' ').trim();
+}
+
+/* ── Distancia de edición (Levenshtein) para fuzzy matching ── */
+function _editDist(a,b){
+  var m=a.length,n=b.length;
+  if(!m) return n; if(!n) return m;
+  var dp=[],i,j;
+  for(i=0;i<=m;i++){dp[i]=new Array(n+1);dp[i][0]=i;}
+  for(j=0;j<=n;j++) dp[0][j]=j;
+  for(i=1;i<=m;i++) for(j=1;j<=n;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+/* Puntaje de coincidencia entre texto y keyword — soporta fuzzy */
+function _keyScore(transcript,kw){
+  var t=norm(transcript), k=norm(kw);
+  /* Coincidencia exacta (substring) */
+  if(t.indexOf(k)!==-1) return k.split(' ').length+1;
+  /* Fuzzy: solo para keywords de una sola palabra */
+  var kWords=k.split(/\s+/);
+  if(kWords.length===1 && k.length>=3){
+    var thresh=Math.max(1,Math.floor(k.length/4)); /* 1 error cada 4 letras */
+    var tWords=t.split(/\s+/);
+    if(tWords.some(function(w){ return _editDist(w,k)<=thresh; })) return 0.8;
+  }
+  return 0;
+}
 
 var INTENTS=[
   /* Saludos */
@@ -3876,20 +3910,96 @@ var INTENTS=[
       if(_wake.enabled){ setTimeout(wakeStop, 300); return 'Escucha continua desactivada 🔕\nYa no estaré esperando la palabra NEXO.'; }
       return 'La escucha continua ya estaba desactivada.';
     }},
+
+  /* ── NAVEGACIÓN DE VISTAS ── */
+  { keys:['modo simple','vista simple','simple','modo basico','pantalla simple','modo facil','pon simple','activa simple','cambia simple','pon modo simple','vista rapida'],
+    fn: function(){
+      if(!_simpleActive){ setTimeout(function(){ toggleSimpleView(); },300);
+        return 'Activando modo simple 🚦\nVista limpia con los datos clave. Di "modo técnico" para volver.'; }
+      return 'Ya estás en modo simple 🚦 Di "modo técnico" para la vista completa.'; }},
+
+  { keys:['modo tecnico','vista tecnica','modo detallado','vista detallada','vista extendida','modo avanzado','modo completo','ver todo','vista normal','salir de simple','cierra simple','volver a tecnico'],
+    fn: function(){
+      if(_simpleActive){ setTimeout(function(){ toggleSimpleView(); },300);
+        return 'Activando vista técnica ⚙️\nTodas las métricas y paneles visibles.'; }
+      return 'Ya estás en vista técnica ⚙️'; }},
+
+  /* ── CONVERSACIÓN CASUAL ── */
+  { keys:['como estas','como te va','que tal tu dia','tu dia','como va tu dia','estas bien','y tu','como vas','que haces','todo bien contigo'],
+    fn: function(){
+      var mood=_onek.mood;
+      var frases=['¡Aquí estoy, monitoreando tu red al 100%! 😊','¡Todo bien por acá! Analizando tu conexión constantemente ⚡','¡Perfecto! Listo para ayudarte cuando me necesites 🤖'];
+      var extra='';
+      if(mood==='alert') extra='\n⚠️ Aunque hay problemas en la red ahora mismo.';
+      else if(mood==='happy') extra='\n🚀 ¡Y tu conexión va excelente!';
+      return frases[Math.floor(Math.random()*frases.length)]+extra; }},
+
+  { keys:['gracias','te lo agradezco','muchas gracias','muy amable','excelente respuesta'],
+    fn: function(){
+      return ['¡Con mucho gusto! 😊 ¿Algo más en lo que te pueda ayudar?','¡Para eso estoy! ¿Qué más necesitas?','¡Siempre a tu servicio! 👋'][Math.floor(Math.random()*3)]; }},
+
+  { keys:['adios','hasta luego','bye','chao','nos vemos','hasta pronto','me voy','hasta manana'],
+    fn: function(){
+      return '¡Hasta luego! 👋 Seguiré monitoreando tu red en segundo plano. Cuando regreses di "NEXO".'; }},
+
+  { keys:['hola nexo','hey nexo','buenos dias','buenas tardes','buenas noches','que onda'],
+    fn: function(){
+      return ['¡Hola! 👋 Soy NEXO, tu asistente de red. ¿Qué necesitas?','¡Hey! Aquí estoy ⚡ ¿En qué te ayudo?','¡Buenas! 😊 Dime qué quieres saber sobre tu conexión.'][Math.floor(Math.random()*3)]; }},
+
+  /* ── INTERNET / MEDIA ── */
+  { keys:['media','media del internet','como esta la media','que tal la media','velocidad media','cuanto es la media'],
+    fn: intentAverage },
+
+  { keys:['cuanto baja','cuanto descarga','a cuanto baja','velocidad actual','que velocidad tengo'],
+    fn: intentDown },
+
+  { keys:['cuanto sube','velocidad de subida','a cuanto sube'],
+    fn: intentUp },
+
+  { keys:['que tal la red','que tal esta','va bien la red','todo normal','internet normal','como va'],
+    fn: intentStatus },
+
+  /* ── TEMAS VISUALES ── */
+  { keys:['tema oscuro','modo oscuro','pon oscuro','dark mode','pantalla oscura'],
+    fn: function(){ setTimeout(function(){ try{ setTheme('dark'); }catch(e){} },300); return 'Tema oscuro activado 🌙'; }},
+
+  { keys:['tema claro','modo claro','pon claro','light mode','pantalla clara'],
+    fn: function(){ setTimeout(function(){ try{ setTheme('light'); }catch(e){} },300); return 'Tema claro activado ☀️'; }},
+
+  /* ── PANELES Y MODALES ── */
+  { keys:['abre ayuda','ver ayuda','manual','como instalo','instalacion','ayuda nexo'],
+    fn: function(){ setTimeout(function(){ try{ openHelp(); }catch(e){} },300); return 'Abriendo la guía de ayuda 📖\nEncontrarás instalación, primeros pasos y FAQ.'; }},
+
+  { keys:['prediccion','predice','prediccion ia','que predices','futuro red','como va a estar'],
+    fn: function(){ setTimeout(function(){ try{ openAiModal(); }catch(e){} },300); return '🔮 Abriendo Predicción IA\nAnalizaré tu historial para predecir el comportamiento de tu conexión.'; }},
+
+  { keys:['multi ping','multi servidor','ping global','latencia mundial','test global','ping mundo'],
+    fn: function(){ setTimeout(function(){ try{ openMpModal(); }catch(e){} },300); return '🌐 Abriendo test de latencias globales…\nMediré el ping a 12 servidores en paralelo.'; }},
+
+  { keys:['test de velocidad','mide velocidad','prueba velocidad','speed test','speedtest'],
+    fn: function(){ setTimeout(function(){ try{ openTestModal(); }catch(e){} },300); return '🎮 Abriendo el panel de Modos de Test\nGaming, Streaming y Videollamadas.'; }},
+
+  /* ── CONFORT / CURIOSIDAD ── */
+  { keys:['cuantos dias guarda','cuanto guarda','dias historial','duracion datos'],
+    fn: function(){ return 'El historial se guarda 90 días en tu dispositivo 📅\nTodo local, sin enviar datos a ningún servidor.'; }},
+
+  { keys:['eres local','mis datos','privacidad','guarda en servidor','nube'],
+    fn: function(){ return 'Soy 100% local 🔒\nTodos tus datos se guardan solo en tu dispositivo (IndexedDB). No envío nada a servidores externos.'; }},
+
+  { keys:['que version','version','version nexo','que version eres'],
+    fn: function(){ return 'Soy NEXO ⚡ — Network Explorer & eXpert Observer\nversión local PWA. ¡Instalable en cualquier dispositivo!'; }},
 ];
 
 function onekProcess(text){
-  var n=norm(text);
-  /* Buscar intent con más coincidencias */
   var best=null, bestScore=0;
   INTENTS.forEach(function(intent){
     var score=0;
-    intent.keys.forEach(function(k){ if(n.includes(norm(k))) score+=k.split(' ').length; });
+    intent.keys.forEach(function(k){ score+=_keyScore(text,k); });
     if(score>bestScore){ bestScore=score; best=intent; }
   });
   if(best&&bestScore>0) return best.fn();
-  /* Fallback */
-  return 'No entendí bien esa pregunta 🤔\nPrueba con: "¿cómo está la conexión?", "¿cuál es el ping?", "ayuda" o "¿qué me recomiendas?"';
+  /* Fallback amigable */
+  return 'Hmm, no entendí bien 🤔\nPuedes decirme cosas como:\n"¿cómo está el ping?", "modo simple", "historial", "promedio", "ayuda" o simplemente "hola".';
 }
 
 /* ── Handlers de intents con datos reales ── */
@@ -4027,9 +4137,12 @@ var _sr = {
   cmdTimer: null   /* timeout auto-retorno a wake */
 };
 
-/* Variaciones fonéticas que el reconocedor puede transcribir como "NEXO" */
+/* Variaciones fonéticas que el reconocedor puede transcribir como "NEXO"
+   El reconocedor de voz puede confundirse con palabras similares en español/inglés */
 var WAKE_KEYWORDS = [
-  'nexo','nex o','nex','nejo','nexus','ne xo','nexo.','¡nexo','nexo!','néxo'
+  'nexo','nex o','nex','nejo','nexus','ne xo','nexo.','¡nexo','nexo!','néxo',
+  'necks o','neco','nexto','necto','hexico','mexico','texto','lexico',
+  'nexou','nexón','new so','an nexo'
 ];
 
 function wakeNorm(s){
@@ -4040,7 +4153,19 @@ function wakeNorm(s){
 
 function wakeMatches(transcript){
   var t = wakeNorm(transcript);
-  return WAKE_KEYWORDS.some(function(kw){ return t.indexOf(wakeNorm(kw)) !== -1; });
+  /* 1. Coincidencia exacta de substring */
+  if(WAKE_KEYWORDS.some(function(kw){ return t.indexOf(wakeNorm(kw)) !== -1; })) return true;
+  /* 2. Fuzzy — cualquier palabra del transcript a ≤1 error de "nexo" */
+  var words=t.split(/\s+/);
+  return words.some(function(w){
+    if(w.length<3||w.length>6) return false;
+    var a=w,b='nexo',m=a.length,n=b.length,dp=[],i,j;
+    for(i=0;i<=m;i++){dp[i]=[i];for(j=1;j<=n;j++) dp[i][j]=0;}
+    for(j=0;j<=n;j++) dp[0][j]=j;
+    for(i=1;i<=m;i++) for(j=1;j<=n;j++)
+      dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+    return dp[m][n]<=1;
+  });
 }
 
 /* ── Crear la instancia unificada ── */
@@ -4154,7 +4279,7 @@ function onWakeDetected(){
   if(_sr.cmdTimer) clearTimeout(_sr.cmdTimer);
   _sr.cmdTimer = setTimeout(function(){
     if(_sr.mode === 'command') srReturnToWake();
-  }, 8000);
+  }, 20000);
 }
 
 /* ── Procesar comando capturado ── */
@@ -4300,7 +4425,7 @@ function startListening(){
     if(_sr.cmdTimer) clearTimeout(_sr.cmdTimer);
     _sr.cmdTimer = setTimeout(function(){
       if(_sr.mode === 'command') srReturnToWake();
-    }, 8000);
+    }, 20000);
     return;
   }
 
@@ -4318,7 +4443,7 @@ function startListening(){
     if(_sr.cmdTimer) clearTimeout(_sr.cmdTimer);
     _sr.cmdTimer = setTimeout(function(){
       if(_sr.mode === 'command') stopListening();
-    }, 8000);
+    }, 20000);
   });
 }
 
